@@ -73,3 +73,22 @@ class NucleusManager:
             p.unlink()
             return True
         return False
+
+    def import_external_handler(self, src_file_path: str) -> str:
+        """Copies an external file (.js, .zip, .nc) into the local nucleus handlers directory."""
+        src = Path(src_file_path)
+        if not src.exists():
+            raise FileNotFoundError(f"Source file not found: {src_file_path}")
+        dest = self.handlers_dir / src.name
+        # If destination already exists with same name, make it unique
+        if dest.exists() and dest != src:
+            stem = src.stem
+            suffix = src.suffix
+            counter = 1
+            while dest.exists():
+                dest = self.handlers_dir / f"{stem}_{counter}{suffix}"
+                counter += 1
+
+        if dest != src:
+            shutil.copy2(src, dest)
+        return str(dest)

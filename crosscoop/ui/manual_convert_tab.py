@@ -1,6 +1,7 @@
 """
 Manual File & Code Converter Tab.
-Bidirectional conversion for local files or pasted code snippets.
+Bidirectional conversion for local files or pasted code snippets,
+with support for unofficial community handlers and lenient parsing.
 """
 
 import os
@@ -15,8 +16,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 from crosscoop.core.converter import (
-    parse_nucleus_js, partydeck_to_nucleus_js,
-    export_partydeck_package, export_nucleus_package
+    parse_nucleus_js, parse_lenient_handler, partydeck_to_nucleus_js,
+    export_partydeck_package, export_nucleus_package, import_handler_file
 )
 
 class ManualConvertTab(QWidget):
@@ -42,7 +43,8 @@ class ManualConvertTab(QWidget):
         self.mode_combo.currentIndexChanged.connect(self.on_mode_changed)
         top_bar.addWidget(self.mode_combo, stretch=2)
 
-        open_file_btn = QPushButton("📂 Open Local File...")
+        open_file_btn = QPushButton("📂 Open Local File / Package...")
+        open_file_btn.setToolTip("Open official or unofficial handler files (.js, .zip, .nc, .json, .txt)")
         open_file_btn.clicked.connect(self.on_open_file)
         top_bar.addWidget(open_file_btn)
 
@@ -101,36 +103,37 @@ class ManualConvertTab(QWidget):
 
     def on_open_file(self):
         idx = self.mode_combo.currentIndex()
-        if idx == 0:
-            filt = "Nucleus Files (*.js *.zip *.nc);;All Files (*)"
-        else:
-            filt = "PartyDeck Files (*.json *.pd2);;All Files (*)"
+        filt = "All Supported Handlers (*.js *.zip *.nc *.json *.pd2 *.txt);;Nucleus Files (*.js *.zip *.nc);;PartyDeck Files (*.json *.pd2);;All Files (*)"
 
         file_path, _ = QFileDialog.getOpenFileName(self, "Open File", "", filt)
         if not file_path:
             return
 
         try:
-            if file_path.endswith(".zip") or file_path.endswith(".nc") or file_path.endswith(".pd2"):
-                with zipfile.ZipFile(file_path, "r") as zf:
-                    target_file = None
-                    for name in zf.namelist():
-                        if name.endswith("handler.js") or name.endswith("handler.json"):
-                            target_file = name
-                            break
-                    if target_file:
-                        content = zf.read(target_file).decode("utf-8", errors="ignore")
-                        self.input_edit.setPlainText(content)
-                    else:
-                        QMessageBox.warning(self, "Invalid Archive", "No handler.js or handler.json found in archive.")
-                        return
-            else:
-                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                    self.input_edit.setPlainText(f.read())
+            res = import_handler_file(file_path)
+            raw_code = res["raw_code"]
+            pd_data = res["partydeck_data"]
+            features = res.get("detected_features", [])
 
-            self.do_convert()
+            if idx == 0:
+                # Nucleus -> PartyDeck
+                self.input_edit.setPlainText(raw_code)
+                self.output_edit.setPlainText(json.dumps(pd_data, indent=2))
+            else:
+                # PartyDeck -> Nucleus
+                if res.get("source_type") in ["json", "archive_json"]:
+                    self.input_edit.setPlainText(raw_code)
+                    self.output_edit.setPlainText(partydeck_to_nucleus_js(pd_data))
+                else:
+                    self.input_edit.setPlainText(raw_code)
+                    self.output_edit.setPlainText(json.dumps(pd_data, indent=2))
+
+            if features:
+                msg = f"Imported '{Path(file_path).name}' successfully!\n\nDetected Features:\n" + "\n".join(f"• {f}" for f in features)
+                QMessageBox.information(self, "File Imported", msg)
+
         except Exception as e:
-            QMessageBox.critical(self, "File Read Error", f"Could not read file:\n{e}")
+            QMessageBox.critical(self, "File Read Error", f"Could not read/parse file:\n{e}")
 
     def do_convert(self):
         code = self.input_edit.toPlainText().strip()
@@ -140,7 +143,7 @@ class ManualConvertTab(QWidget):
         idx = self.mode_combo.currentIndex()
         try:
             if idx == 0:
-                # Nucleus -> PartyDeck
+                # Nucleus -> PartyDeck (uses lenient parsing)
                 pd_data = parse_nucleus_js(code)
                 out_str = json.dumps(pd_data, indent=2)
                 self.output_edit.setPlainText(out_str)

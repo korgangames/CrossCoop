@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CrossCoop — Universal Split-Screen Bridge</title>
+  <title>CrossCoop — Universal Split-Screen Bridge (896+ Games)</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -28,10 +28,10 @@
       </div>
       <nav class="hidden md:flex space-x-8 text-sm font-medium text-gray-400">
         <a href="#about" class="hover:text-indigo-400 transition">About</a>
+        <a href="#dual-browsers" class="hover:text-indigo-400 transition">Dual Browsers (896 Games)</a>
         <a href="#features" class="hover:text-indigo-400 transition">Features</a>
         <a href="#diagnostics" class="hover:text-indigo-400 transition">Pre-Flight Audit</a>
         <a href="#downloads" class="hover:text-indigo-400 transition">Downloads</a>
-        <a href="#ecosystems" class="hover:text-indigo-400 transition">Ecosystems</a>
       </nav>
       <div class="flex items-center space-x-4">
         <a href="https://github.com/korgangames/CrossCoop" target="_blank" class="px-4 py-2 text-sm font-semibold rounded-lg bg-gray-800 hover:bg-gray-700 text-white flex items-center space-x-2 border border-gray-700 transition">
@@ -43,19 +43,44 @@
   </header>
 
   <!-- Hero Section -->
-  <section class="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
-    <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-800/60 text-indigo-300 text-xs font-semibold mb-8">
-      <i class="fa-solid fa-network-wired"></i>
-      <span>Bridging Windows & Linux Split-Screen PC Gaming</span>
+  <section class="max-w-5xl mx-auto px-6 pt-16 pb-12 text-center">
+    <div class="inline-flex items-center space-x-2 px-3 py-1.5 rounded-full bg-indigo-950/80 border border-indigo-800/60 text-indigo-300 text-xs font-semibold mb-6">
+      <i class="fa-solid fa-bolt"></i>
+      <span>Dual-Browser Architecture: Unlocking 896+ Split-Screen Games on Linux & Windows</span>
     </div>
-    <h1 class="text-5xl md:text-6xl font-black text-white tracking-tight mb-6 leading-tight">
-      Unite the Split-Screen Libraries of <br>
-      <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400">Nucleus Co-op</span> & 
+    <h1 class="text-4xl md:text-6xl font-black text-white tracking-tight mb-6 leading-tight">
+      Built-In Browsers for <br>
+      <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-cyan-400">Nucleus Co-op (896+ Games)</span> & 
       <span class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-emerald-400">PartyDeck</span>
     </h1>
-    <p class="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed">
-      CrossCoop is a two-way handler converter, pre-flight stability auditor, and community browser. Play 895+ community-scripted PC games split-screen natively on Linux, or export Linux handlers back to Windows without hassle.
+    <p class="text-base md:text-lg text-gray-300 max-w-3xl mx-auto mb-8 leading-relaxed">
+      While PartyDeck natively documents only ~10 games, CrossCoop equips you with <strong>in-app browsers for both platforms</strong>. Instantly browse, filter, and 1-click convert the entire <strong>896-game SplitScreen.Me library</strong> to play natively on Linux, plus import unofficial community scripts with smart lenient detection!
     </p>
+
+    <!-- Stat Badges Bar -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mb-10 text-left">
+      <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+        <span class="text-xs text-indigo-400 uppercase font-bold tracking-wider">Nucleus Catalog</span>
+        <div class="text-2xl font-black text-white mt-0.5">896+ Games</div>
+        <p class="text-gray-400 text-xs mt-1">Full SplitScreen.Me library</p>
+      </div>
+      <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+        <span class="text-xs text-emerald-400 uppercase font-bold tracking-wider">Dual Browsers</span>
+        <div class="text-2xl font-black text-white mt-0.5">Both Platforms</div>
+        <p class="text-gray-400 text-xs mt-1">Nucleus Hub & PartyDeck Sync</p>
+      </div>
+      <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+        <span class="text-xs text-purple-400 uppercase font-bold tracking-wider">Unofficial Importer</span>
+        <div class="text-2xl font-black text-white mt-0.5">Local Files</div>
+        <p class="text-gray-400 text-xs mt-1">Lenient .js / .zip / .nc parser</p>
+      </div>
+      <div class="bg-gray-900/60 border border-gray-800 rounded-xl p-4">
+        <span class="text-xs text-cyan-400 uppercase font-bold tracking-wider">Pre-Flight Audit</span>
+        <div class="text-2xl font-black text-white mt-0.5">8-Point Tests</div>
+        <p class="text-gray-400 text-xs mt-1">Zero input bleed & crash checks</p>
+      </div>
+    </div>
+
     <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-5">
       <a href="#downloads" class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold text-base shadow-xl shadow-indigo-600/30 transition flex items-center justify-center space-x-3">
         <i class="fa-solid fa-download"></i>
@@ -68,8 +93,99 @@
     </div>
   </section>
 
+  <!-- Dual Browsers Spotlight Section -->
+  <section id="dual-browsers" class="max-w-6xl mx-auto px-6 py-12">
+    <div class="bg-gradient-to-r from-blue-950/40 via-purple-950/30 to-emerald-950/40 border border-indigo-900/50 rounded-3xl p-8 md:p-12">
+      <div class="text-center max-w-3xl mx-auto mb-10">
+        <span class="px-3 py-1 rounded-full bg-indigo-900/60 text-indigo-300 text-xs font-bold uppercase tracking-wider border border-indigo-700/50">Game Catalog Revolution</span>
+        <h2 class="text-3xl md:text-4xl font-extrabold text-white mt-3 mb-4">
+          Why Show Just 10 Games When You Can Have 896?
+        </h2>
+        <p class="text-gray-300 text-sm md:text-base leading-relaxed">
+          Native PartyDeck repositories currently list only about 10 verified handlers. CrossCoop solves this limitation by integrating <strong>direct, native in-app browsers for BOTH ecosystems</strong>:
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <!-- Nucleus Hub Browser Spotlight -->
+        <div class="bg-gray-950/70 border border-blue-900/60 rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-3 mb-4">
+              <span class="p-3 bg-blue-900/40 text-blue-400 rounded-xl border border-blue-700/40 text-xl"><i class="fa-solid fa-database"></i></span>
+              <div>
+                <h3 class="text-2xl font-bold text-white">Nucleus SplitScreen.Me Hub</h3>
+                <span class="text-xs text-blue-400 font-semibold uppercase tracking-wider">896+ Games Included</span>
+              </div>
+            </div>
+            <p class="text-gray-300 text-sm leading-relaxed mb-4">
+              CrossCoop embeds the complete, searchable catalog of all <strong>896+ games</strong> from the SplitScreen.Me database. Features clickable column sorting (Title, Downloads, Players, Status), genre search, and instant 1-click conversion into PartyDeck!
+            </p>
+            <div class="bg-gray-900/80 p-3 rounded-lg border border-gray-800 text-xs text-gray-400 mb-6">
+              <strong class="text-blue-300 block mb-1">🎮 Popular Supported Titles:</strong>
+              Borderlands 1/2/3, Left 4 Dead 2, Risk of Rain 2, Halo MCC, Elden Ring Seamless Co-op, Terraria, Valheim, Deep Rock Galactic, Dying Light, and 880+ more.
+            </div>
+          </div>
+          <div class="flex items-center text-xs text-blue-400 font-semibold space-x-2">
+            <i class="fa-solid fa-check-circle"></i>
+            <span>Interactive Sorting by Downloads, Players & Game Title</span>
+          </div>
+        </div>
+
+        <!-- PartyDeck Community Browser Spotlight -->
+        <div class="bg-gray-950/70 border border-emerald-900/60 rounded-2xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center space-x-3 mb-4">
+              <span class="p-3 bg-emerald-900/40 text-emerald-400 rounded-xl border border-emerald-700/40 text-xl"><i class="fa-brands fa-github"></i></span>
+              <div>
+                <h3 class="text-2xl font-bold text-white">PartyDeck Community Hub</h3>
+                <span class="text-xs text-emerald-400 font-semibold uppercase tracking-wider">Live GitHub Issue & Repo Sync</span>
+              </div>
+            </div>
+            <p class="text-gray-300 text-sm leading-relaxed mb-4">
+              Browse both official PartyDeck handlers and live community submissions fetched directly from GitHub issues. Install community configs with one click or reverse-export them to standard Nucleus Co-op format.
+            </p>
+            <div class="bg-gray-900/80 p-3 rounded-lg border border-gray-800 text-xs text-gray-400 mb-6">
+              <strong class="text-emerald-300 block mb-1">🐧 Linux-Native Advantages:</strong>
+              Gamescope integer window tiling, Bubblewrap controller hardware isolation per player, and native Proton-GE runtime optimization.
+            </div>
+          </div>
+          <div class="flex items-center text-xs text-emerald-400 font-semibold space-x-2">
+            <i class="fa-solid fa-check-circle"></i>
+            <span>Live Sync with Official PartyDeck GitHub Submissions</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Unofficial Community Importer Spotlight -->
+  <section class="max-w-6xl mx-auto px-6 py-6">
+    <div class="bg-gray-900/60 border border-purple-900/50 rounded-2xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 card-glow transition">
+      <div class="max-w-3xl">
+        <div class="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-purple-900/40 border border-purple-700/40 text-purple-300 text-xs font-semibold mb-3">
+          <i class="fa-solid fa-file-import"></i>
+          <span>Lenient Community Parser</span>
+        </div>
+        <h3 class="text-2xl md:text-3xl font-extrabold text-white mb-2">Import Unofficial & Loose Handlers from Local Files</h3>
+        <p class="text-gray-300 text-sm leading-relaxed">
+          Not all handlers are official or follow strict syntax conventions. Have a custom script from Discord, Reddit, or SplitScreen.Me forums? Click the new <strong>"📥 Import from Local Files"</strong> button. CrossCoop's resilient parser automatically detects game executables, Steam AppIDs, Goldberg LAN configurations, and launch flags even from loose, unconfirmed code snippets (.js, .zip, .nc, .json)!
+        </p>
+      </div>
+      <div class="flex flex-col space-y-2 w-full md:w-auto">
+        <span class="px-4 py-2 rounded-lg bg-purple-950/80 border border-purple-700/50 text-purple-300 text-xs font-mono text-center">
+          Supports: .js • .zip • .nc • .json • .txt
+        </span>
+        <span class="px-4 py-2 rounded-lg bg-gray-950 border border-gray-800 text-gray-400 text-xs text-center">
+          Auto-Detection & Smart Fallbacks
+        </span>
+      </div>
+    </div>
+  </section>
+
   <!-- Core Ecosystem Links -->
-  <section id="ecosystems" class="max-w-6xl mx-auto px-6 py-12">
+  <section id="about" class="max-w-6xl mx-auto px-6 py-12">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
       
       <!-- Nucleus Co-op Card -->
@@ -83,10 +199,10 @@
             </div>
           </div>
           <p class="text-gray-400 text-sm leading-relaxed mb-6">
-            The pioneer Windows multi-instance tool boasting over <strong>895 community handlers</strong>. Emulates multiple players locally with input hooks, window tiling, and symlinked profiles.
+            The pioneer Windows multi-instance tool boasting over <strong>896 community handlers</strong>. Emulates multiple players locally with input hooks, window tiling, and symlinked profiles.
           </p>
           <ul class="text-sm space-y-2 text-gray-300 mb-6">
-            <li class="flex items-center space-x-2"><i class="fa-solid fa-check text-blue-400 text-xs"></i><span>895+ Supported Games Catalog</span></li>
+            <li class="flex items-center space-x-2"><i class="fa-solid fa-check text-blue-400 text-xs"></i><span>896+ Supported Games Catalog</span></li>
             <li class="flex items-center space-x-2"><i class="fa-solid fa-check text-blue-400 text-xs"></i><span>SplitScreen.Me Hub Integration</span></li>
           </ul>
         </div>
@@ -148,20 +264,20 @@
         <div class="w-12 h-12 rounded-xl bg-purple-900/40 text-purple-400 flex items-center justify-center mb-5 text-xl border border-purple-700/30">
           <i class="fa-solid fa-layer-group"></i>
         </div>
-        <h4 class="text-xl font-bold text-white mb-2">895+ Game Hub Browser</h4>
+        <h4 class="text-xl font-bold text-white mb-2">Dual In-App Browsers</h4>
         <p class="text-gray-400 text-sm leading-relaxed">
-          Search the entire SplitScreen.Me library with real-time filtering by genre, controller support, and player counts with one-click installation.
+          Browse both the 896-game Nucleus SplitScreen.Me library and the PartyDeck GitHub community database in one single application.
         </p>
       </div>
 
       <!-- Feature 3 -->
       <div class="bg-gray-900/40 border border-gray-800/80 rounded-2xl p-6 card-glow transition">
         <div class="w-12 h-12 rounded-xl bg-cyan-900/40 text-cyan-400 flex items-center justify-center mb-5 text-xl border border-cyan-700/30">
-          <i class="fa-solid fa-users-viewfinder"></i>
+          <i class="fa-solid fa-rocket"></i>
         </div>
-        <h4 class="text-xl font-bold text-white mb-2">PartyDeck Community Hub</h4>
+        <h4 class="text-xl font-bold text-white mb-2">Dual Launcher & Bootables</h4>
         <p class="text-gray-400 text-sm leading-relaxed">
-          Browse verified and community-submitted PartyDeck handlers pulled directly from GitHub issues, complete with setup instructions.
+          Launch PartyDeck or Nucleus Co-op directly from the header bar, with customizable bootable paths configured in Settings.
         </p>
       </div>
 
@@ -180,7 +296,7 @@
           Pre-Flight Verification Before You Play
         </h2>
         <p class="text-gray-300 text-base leading-relaxed mb-8">
-          Split-screen multi-instance gaming can fail due to port collisions, controller leaks, or missing window arguments. CrossCoop performs an intensive 7-phase audit before launching any game:
+          Split-screen multi-instance gaming can fail due to port collisions, controller leaks, or missing window arguments. CrossCoop performs an intensive 8-phase audit before launching any game:
         </p>
       </div>
 

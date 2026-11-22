@@ -1,6 +1,8 @@
 """
 Nucleus Co-op Local Installed Handlers Tab.
-Manages handlers present in the local nucleus_coop/handlers directory and converts them to PartyDeck.
+Manages handlers present in the local nucleus_coop/handlers directory,
+supports importing loose/unofficial community handlers from local files,
+and converts them into PartyDeck.
 """
 
 import subprocess
@@ -13,7 +15,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 
 from crosscoop.core.nucleus_manager import NucleusManager
-from crosscoop.core.converter import parse_nucleus_js
+from crosscoop.core.converter import parse_nucleus_js, import_handler_file
 
 class NucleusInstalledTab(QWidget):
     handler_converted_signal = pyqtSignal()
@@ -24,6 +26,9 @@ class NucleusInstalledTab(QWidget):
         self.partydeck_mgr = partydeck_mgr
         self.handlers = []
         self.selected_item = None
+
+        self.sort_column = 0
+        self.sort_order = Qt.SortOrder.AscendingOrder
 
         self.setup_ui()
         self.refresh_list()
@@ -37,6 +42,14 @@ class NucleusInstalledTab(QWidget):
         self.count_lbl = QLabel("Installed in Nucleus Co-op (0 files)")
         self.count_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #818cf8;")
         header_bar.addWidget(self.count_lbl)
+
+        header_bar.addStretch()
+
+        import_btn = QPushButton("📥 Import Local / Downloaded Handler...")
+        import_btn.setObjectName("primaryBtn")
+        import_btn.setToolTip("Import unofficial or manually downloaded community handlers (.js, .zip, .nc, .json)")
+        import_btn.clicked.connect(self.on_import_handler)
+        header_bar.addWidget(import_btn)
 
         refresh_btn = QPushButton("🔄 Refresh")
         refresh_btn.clicked.connect(self.refresh_list)
@@ -64,10 +77,10 @@ class NucleusInstalledTab(QWidget):
         splitter.addWidget(self.table)
 
         # Right Inspector Panel
-        inspector = QGroupBox("Handler Code & PartyDeck Conversion")
+        inspector = QGroupBox("Handler Code Inspector & PartyDeck Converter")
         insp_layout = QVBoxLayout(inspector)
 
-        self.details_lbl = QLabel("Select a local Nucleus handler")
+        self.details_lbl = QLabel("Select a handler file")
         self.details_lbl.setStyleSheet("font-weight: bold; color: #ffffff;")
         insp_layout.addWidget(self.details_lbl)
 
@@ -75,9 +88,9 @@ class NucleusInstalledTab(QWidget):
         self.code_editor.setStyleSheet("font-family: monospace; background-color: #12131a; border: 1px solid #232533; border-radius: 6px;")
         insp_layout.addWidget(self.code_editor, stretch=1)
 
-        # Buttons
+        # Action Buttons
         btn_layout = QVBoxLayout()
-        self.convert_pd_btn = QPushButton("⚡ Convert & Install to PartyDeck")
+        self.convert_pd_btn = QPushButton("🔄 Convert & Install to PartyDeck")
         self.convert_pd_btn.setObjectName("primaryBtn")
         self.convert_pd_btn.setFixedHeight(36)
         self.convert_pd_btn.setEnabled(False)
@@ -85,13 +98,13 @@ class NucleusInstalledTab(QWidget):
         btn_layout.addWidget(self.convert_pd_btn)
 
         row_btns = QHBoxLayout()
-        self.save_code_btn = QPushButton("💾 Save Code Changes")
+        self.save_code_btn = QPushButton("💾 Save Changes")
         self.save_code_btn.setEnabled(False)
         self.save_code_btn.clicked.connect(self.on_save_code)
         row_btns.addWidget(self.save_code_btn)
 
-        self.open_folder_btn = QPushButton("📁 Open Folder")
-        self.open_folder_btn.clicked.connect(lambda: subprocess.Popen(["xdg-open", str(self.nucleus_mgr.handlers_dir)]))
+        self.open_folder_btn = QPushButton("📁 Open Handlers Folder")
+        self.open_folder_btn.clicked.connect(self.on_open_folder)
         row_btns.addWidget(self.open_folder_btn)
 
         self.delete_btn = QPushButton("🗑️ Delete")
@@ -104,22 +117,103 @@ class NucleusInstalledTab(QWidget):
         insp_layout.addLayout(btn_layout)
 
         splitter.addWidget(inspector)
-        splitter.setSizes([520, 480])
+        splitter.setSizes([500, 480])
         main_layout.addWidget(splitter, stretch=1)
+
+    def on_open_folder(self):
+        folder = str(self.nucleus_mgr.handlers_dir)
+        subprocess.Popen(["xdg-open", folder])
+
+    def on_import_handler(self):
+        file_paths, _ = QFileDialog.getOpenFileNames(
+            self,
+            "Import Downloaded / Unofficial Handlers",
+            "",
+            "Handler Files (*.js *.zip *.nc *.json *.txt);;All Files (*)"
+        )
+        if not file_paths:
+            return
+
+        imported_count = 0
+        for fpath in file_paths:
+            try:
+                # 1. Parse leniently using import_handler_file
+                result = import_handler_file(fpath)
+                pd_data = result["partydeck_data"]
+                features = result["detected_features"]
+                features_str = "\n".join(f"• {f}" for f in features) if features else "Standard parameters"
+
+                # 2. Copy file into local nucleus handlers directory
+                dest_path = self.nucleus_mgr.import_external_handler(fpath)
+
+                # 3. Prompt user to immediately convert & install into PartyDeck
+                game_title = pd_data.get("name", Path(fpath).stem)
+                ans = QMessageBox.question(
+                    self,
+                    "Handler Imported",
+                    f"Successfully imported handler file:\n{Path(fpath).name}\n\n"
+                    f"🎮 Game: {game_title}\n"
+                    f"⚙️ Executable: {pd_data.get('exec')}\n"
+                    f"🔍 Detected Features:\n{features_str}\n\n"
+                    f"Do you want to immediately convert & install this handler into PartyDeck as well?",
+                    QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+                )
+
+                if ans == QMessageBox.StandardButton.Yes:
+                    self.partydeck_mgr.save_handler(pd_data["name"], pd_data)
+                    self.handler_converted_signal.emit()
+
+                imported_count += 1
+            except Exception as e:
+                QMessageBox.critical(self, "Import Error", f"Failed to import '{Path(fpath).name}':\n{e}")
+
+        if imported_count > 0:
+            self.refresh_list()
+
+    def on_header_clicked(self, logical_index):
+        if logical_index == self.sort_column:
+            self.sort_order = (
+                Qt.SortOrder.AscendingOrder
+                if self.sort_order == Qt.SortOrder.DescendingOrder
+                else Qt.SortOrder.DescendingOrder
+            )
+        else:
+            self.sort_column = logical_index
+            self.sort_order = Qt.SortOrder.AscendingOrder
+
+        self.table.horizontalHeader().setSortIndicator(self.sort_column, self.sort_order)
+        self.apply_sorting_and_render()
 
     def refresh_list(self):
         self.handlers = self.nucleus_mgr.get_installed_handlers()
         self.count_lbl.setText(f"Installed in Nucleus Co-op ({len(self.handlers)} files)")
+        self.apply_sorting_and_render()
+
+    def apply_sorting_and_render(self):
+        is_reverse = (self.sort_order == Qt.SortOrder.DescendingOrder)
+
+        def get_sort_key(item):
+            if self.sort_column == 0:
+                return item["file_name"].lower()
+            elif self.sort_column == 1:
+                return "Archive" if item["is_archive"] else "JavaScript"
+            elif self.sort_column == 2:
+                return item["size"]
+            return ""
+
+        self.handlers.sort(key=get_sort_key, reverse=is_reverse)
+        self.render_rows()
+
+    def render_rows(self):
         self.table.setRowCount(len(self.handlers))
 
         for row, item in enumerate(self.handlers):
-            name = item["file_name"]
-            fmt = "Archive (.zip/.nc)" if item["is_archive"] else "Script (.js)"
-            sz = f"{item['size'] / 1024:.1f} KB"
+            fmt = "📦 Package (.zip/.nc)" if item["is_archive"] else "📜 Script (.js)"
+            size_kb = f"{item['size'] / 1024:.1f} KB"
 
-            self.table.setItem(row, 0, QTableWidgetItem(name))
+            self.table.setItem(row, 0, QTableWidgetItem(item["file_name"]))
             self.table.setItem(row, 1, QTableWidgetItem(fmt))
-            self.table.setItem(row, 2, QTableWidgetItem(sz))
+            self.table.setItem(row, 2, QTableWidgetItem(size_kb))
 
         if self.handlers:
             self.table.selectRow(0)
@@ -129,15 +223,6 @@ class NucleusInstalledTab(QWidget):
             self.convert_pd_btn.setEnabled(False)
             self.save_code_btn.setEnabled(False)
             self.delete_btn.setEnabled(False)
-
-    def on_header_clicked(self, logical_index):
-        if logical_index == 0:
-            self.handlers.sort(key=lambda x: x["file_name"].lower())
-        elif logical_index == 1:
-            self.handlers.sort(key=lambda x: x["is_archive"])
-        elif logical_index == 2:
-            self.handlers.sort(key=lambda x: x["size"], reverse=True)
-        self.refresh_list()
 
     def on_selection_changed(self):
         selected_rows = self.table.selectionModel().selectedRows()
@@ -183,11 +268,13 @@ class NucleusInstalledTab(QWidget):
             return
         code = self.code_editor.toPlainText()
         try:
-            pd_data = parse_nucleus_js(code)
+            pd_data = parse_nucleus_js(code, meta={"gameName": Path(self.selected_item["file_name"]).stem})
             self.partydeck_mgr.save_handler(pd_data["name"], pd_data)
+            features = pd_data.get("_detected_features", [])
+            f_str = f"\n\nFeatures detected:\n" + "\n".join(f"• {f}" for f in features) if features else ""
             QMessageBox.information(
                 self, "Converted",
-                f"Handler '{pd_data['name']}' has been converted and installed into PartyDeck!"
+                f"Handler '{pd_data['name']}' has been converted and installed into PartyDeck!{f_str}"
             )
             self.handler_converted_signal.emit()
         except Exception as e:

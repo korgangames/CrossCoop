@@ -10,13 +10,13 @@
 
 ## 📖 What is CrossCoop?
 
-PC gaming has two incredible community-driven tools for playing non-split-screen games locally with friends on a single PC:
-1. **[Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus)**: The mature Windows giant with over **895 community handlers** created over 8+ years.
-2. **[PartyDeck](https://github.com/partydeck/partydeck)**: The native Linux/SteamOS launcher that uses **Gamescope** for window composition and **Bubblewrap (`bwrap`)** to isolate controllers with zero input bleed.
+PC gaming has two community-driven tools for playing non-split-screen games locally with friends on a single PC:
+1. **[Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus)**: The mature Windows giant boasting over **896 community handlers** refined over 8+ years.
+2. **[PartyDeck](https://github.com/partydeck/partydeck)**: The native Linux/SteamOS launcher using **Gamescope** for window composition and **Bubblewrap (`bwrap`)** for hardware controller isolation without input bleed.
 
 Historically, they have been locked in their own separate worlds:
-* **The Problem:** Nucleus Co-op fails on Linux under Wine/Proton due to unsupported Win32 API DLL injections and window hooks. Meanwhile, PartyDeck is native and stable on Linux, but only has ~50 handlers created so far.
-* **The Solution:** **CrossCoop** acts as a double-sided universal bridge. It takes the extensive collective intelligence from Nucleus Co-op’s 895 handlers and translates them into native PartyDeck manifests that run flawlessly on Linux. Furthermore, it allows Linux users to export PartyDeck handlers back into standard Nucleus Co-op scripts for Windows gamers!
+* **The Reality:** Native PartyDeck repositories document only about **10 verified handlers**, while Nucleus Co-op cannot run on Linux because its Win32 API DLL injections and window hooks fail under Wine/Proton.
+* **The Solution:** **CrossCoop** provides **built-in in-app browsers for both platforms**, unlocking the entire **896-game SplitScreen.Me library** for Linux and Steam Deck players. CrossCoop translates complex Nucleus handlers into native PartyDeck configurations, supports importing unconfirmed community scripts, and reverse-exports PartyDeck configs back to Windows!
 
 ---
 
@@ -24,43 +24,47 @@ Historically, they have been locked in their own separate worlds:
 
 | Program | Platform | Core Technology | Official Link |
 | :--- | :---: | :--- | :--- |
-| **Nucleus Co-op** | Windows | Win32 API, ProtoInput, EasyHook, XInputPlus | [GitHub: SplitScreen-Me/splitscreenme-nucleus](https://github.com/SplitScreen-Me/splitscreenme-nucleus) |
-| **PartyDeck** | Linux / SteamOS | Gamescope, Bubblewrap (`bwrap`), UMU, Proton-GE | [GitHub: partydeck/partydeck](https://github.com/partydeck/partydeck) |
+| **Nucleus Co-op** | Windows | Win32 API, ProtoInput, EasyHook, XInputPlus (896 Games) | [GitHub: SplitScreen-Me/splitscreenme-nucleus](https://github.com/SplitScreen-Me/splitscreenme-nucleus) |
+| **PartyDeck** | Linux / SteamOS | Gamescope, Bubblewrap (`bwrap`), UMU, Proton-GE (~10 Games) | [GitHub: partydeck/partydeck](https://github.com/partydeck/partydeck) |
 
 ---
 
 ## 🌟 Key Features
 
-### 1. 🔄 Double-Sided Handler Translation
-* **Nucleus Co-op ➜ PartyDeck:** Automatically downloads and parses any handler from the 895-game SplitScreen.Me Hub. Discards the fragile Windows-only hooks in favor of Linux kernel sandboxing, generating a ready-to-play PartyDeck configuration.
-* **PartyDeck ➜ Nucleus Co-op:** Converts PartyDeck `.pd2` or `handler.json` files back into standard, compliant `handler.js` / `.zip` scripts ready to run in Nucleus Co-op on Windows.
+### 1. 🌐 Dual In-App Browsers (896+ Games Unlocked)
+CrossCoop doesn't just browse one ecosystem; it integrates native browsers for **both platforms**:
+* **SplitScreen.Me Hub Browser (896+ Games):** Complete live catalog of 896 verified PC games with interactive table header sorting (Title, Downloads, Players, Status), genre filtering, and 1-click install & convert to PartyDeck.
+* **PartyDeck Community Browser:** Live sync with the official `partydeck/partydeck` GitHub repository to fetch verified and community-submitted issue configs.
 
-### 2. 🛡️ Intensive Pre-Flight Stability Audit & Stress Test
-Before launching a game, CrossCoop conducts a **7-phase stability check** to prevent crashes, input bleed, and save corruption:
-1. **Executable & Library Integrity:** Scans Steam libraries and custom directories to verify game binary presence and architecture.
-2. **Controller Enumeration & Masking:** Probes `/dev/input/` to ensure sufficient distinct gamepads are connected for the requested player count.
-3. **Bubblewrap Sandbox Permissions:** Confirms `bwrap` can isolate device nodes without root privileges.
-4. **Gamescope & Display Resolution Geometry:** Calculates exact split-screen dimensions (2P vertical/horizontal, 3P, or 4P quadrants) and checks for forced windowed mode flags (`-windowed`, `-noborder`).
-5. **Steam AppID & Goldberg LAN Emulation:** Verifies AppID validity and local Steam networking socket configuration.
-6. **Network Port Collision Test:** Probes local ports (Goldberg `47584`, game ports `27015`, `7777`) to ensure no background processes or orphaned instances are holding sockets.
+### 2. 📥 Import Unofficial & Downloaded Handlers (Lenient Detection)
+Downloaded a loose handler script or experimental package from Discord, Reddit, or SplitScreen.Me forums?
+* Click the **"📥 Import Local / Downloaded Handler"** button.
+* CrossCoop’s resilient, lenient parser auto-detects game executables, Steam AppIDs, Goldberg LAN emulators, and custom launch arguments even from unconfirmed or non-standard `.js`, `.zip`, `.nc`, `.json`, and raw text scripts.
+
+### 3. 🔄 Double-Sided Handler Translation
+* **Nucleus Co-op ➜ PartyDeck:** Translates Nucleus JavaScript handlers into clean PartyDeck JSON manifests, discarding fragile Windows DLL hooks in favor of Linux kernel controller masking.
+* **PartyDeck ➜ Nucleus Co-op:** Exports PartyDeck handlers back into standard `.js` / `.zip` / `.nc` packages ready to drop into Nucleus Co-op on Windows.
+
+### 4. 🛡️ Intensive 8-Phase Pre-Flight Stability Audit
+Before launching any game, CrossCoop verifies your system to prevent crashes, input bleed, and port collisions:
+1. **Executable & Steam Library Check:** Verifies binary presence, execute permissions, and architecture.
+2. **Controller Enumeration & Masking:** Probes `/dev/input/` to ensure sufficient gamepads for the requested player count.
+3. **Bubblewrap Sandbox Permissions:** Confirms unprivileged `bwrap` namespace support.
+4. **Gamescope Geometry & Tiling:** Computes exact quadrant resolutions and windowed mode flags (`-windowed`, `-popupwindow`).
+5. **Steam AppID & Goldberg LAN Emulation:** Checks socket configuration and local networking.
+6. **Network Port Collision Test:** Scans ports (Goldberg `47584`, game ports `27015`, `7777`) for orphaned background processes.
 7. **Proton / UMU Compatibility:** Verifies runner availability and prefix isolation.
 
-### 3. 🐧 PartyDeck Community Handlers Browser
-Browse PartyDeck community handlers just like the Nucleus Hub!
-* Features a built-in curated database of verified PartyDeck titles (*Dark Souls III Seamless Co-op, Call of Duty Alt Launcher, System Shock 2, Left 4 Dead 2, Risk of Rain 2, Wreckfest, Spelunky 2*, and more).
-* **Live GitHub Sync:** One-click synchronization directly queries the `partydeck/partydeck` GitHub repository for newly released community handlers and issue submissions.
-
-### 4. 🎮 895-Game Nucleus Hub Browser
-* Full live catalog search of all 895 games.
-* Filter by genre (Action, RPG, FPS, Racing, Survival) and input compatibility.
-* Single-click **"Convert & Install to PartyDeck"**.
+### 5. 🚀 Dual Launcher & Custom Bootables
+* Launch either **PartyDeck** or **Nucleus Co-op** with one click directly from CrossCoop’s header bar.
+* Configure custom bootable paths (AppImages, custom binaries, or runner scripts) in the **Settings** tab.
 
 ---
 
 ## 📥 Releases & Download
 
 ### Option 1: Standalone Script (Recommended)
-You can clone and run CrossCoop directly on Nobara Linux, Fedora, SteamOS, or Ubuntu without compiling:
+You can clone and run CrossCoop directly on Nobara Linux, Fedora, SteamOS, or Ubuntu:
 
 ```bash
 # Clone the repository
@@ -72,7 +76,7 @@ cd CrossCoop
 ```
 
 ### Option 2: Pre-Packaged Releases
-Download prebuilt archives, tagged releases, and `.pd2` packages from the [GitHub Releases Page](https://github.com/korgangames/CrossCoop/releases).
+Download prebuilt archives and tagged releases from the [GitHub Releases Page](https://github.com/korgangames/CrossCoop/releases).
 
 ---
 
@@ -82,29 +86,18 @@ Download prebuilt archives, tagged releases, and `.pd2` packages from the [GitHu
    ```bash
    ./crosscoop.sh
    ```
-2. **Find a Game:**
-   * Go to the **Browse Nucleus Hub** tab and search for any game (e.g., *Borderlands 2*, *Deep Rock Galactic*, *Risk of Rain 2*).
+2. **Browse or Import a Game:**
+   * Open the **🪟 Nucleus Co-op** tab to search 896+ games, or click **"📥 Import Local / Downloaded Handler"** for custom downloads.
    * Click **"⚡ Convert & Install to PartyDeck"**.
 3. **Run Pre-Flight Audit:**
-   * Switch to the **Pre-Flight Stability Audit** tab.
-   * Select the game, pick your player count (e.g., 2 or 4 players), and click **"Run Intensive Stability Audit"**.
-   * Verify all tests return 🟢 PASS.
+   * Switch to the **🛡️ Pre-Flight Stability Audit** tab.
+   * Select the game and click **"Run Intensive Stability Audit"** to ensure zero port collisions and verified controller isolation.
 4. **Play:**
-   * Click **"🚀 Run PartyDeck"** in the top bar.
-   * Connect your controllers and enjoy split-screen gaming on Linux!
+   * Click **"🚀 Run PartyDeck"** in the top bar to start gaming!
 
 ---
 
 ## 🛠️ Requirements
 * **Operating System:** Nobara Linux, SteamOS, Fedora, Arch, or Ubuntu.
 * **Compositor:** Wayland or X11 (Gamescope supported).
-* **Dependencies:** Python 3.10+, `python3-pyqt6`, `bwrap`, `gamescope`.
-
----
-
-## 🤝 Contributing & Community
-Pull requests, community handler contributions, and feature suggestions are welcome!
-
-* **GitHub Repository:** [https://github.com/korgangames/CrossCoop](https://github.com/korgangames/CrossCoop)
-* **Author:** [Korgan Games](https://github.com/korgangames)
-* **License:** MIT
+* **Dependencies:** Python 3.10+, PyQt6 (`pip install PyQt6`).

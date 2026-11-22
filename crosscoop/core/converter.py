@@ -185,9 +185,12 @@ def detect_game_installation(game_name: str, steam_id: int = None) -> tuple[Path
 
 def auto_configure_partydeck_proton():
     """
-    Checks PartyDeck's settings.json. If proton_version is unset or empty,
-    automatically configures it to use the best locally installed Proton version
-    so that umu-run never attempts an on-the-fly 1.5GB background download.
+    Checks PartyDeck's settings.json and optimizes the environment:
+    1. If proton_version is unset or empty, auto-configures it to use the best locally installed Proton version
+       so that umu-run never attempts an on-the-fly 1.5GB background download.
+    2. If running on NVIDIA + Wayland, disables gamescope_sdl_backend (sets to false)
+       because Gamescope's SDL backend on NVIDIA causes severe flickering and black-screen frames
+       (PartyDeck Issue #7: "Gamescope black screen under Wayland with Nvidia drivers").
     """
     home = Path.home()
     settings_file = home / ".local" / "share" / "partydeck" / "settings.json"
@@ -196,37 +199,45 @@ def auto_configure_partydeck_proton():
 
     try:
         data = json.loads(settings_file.read_text(encoding="utf-8"))
-        curr_ver = data.get("proton_version", "").strip()
-        if curr_ver:
-            return  # Already configured
+        changed = False
 
-        # Search for installed Proton versions
-        candidates = []
-        compat_dirs = [
-            home / ".local" / "share" / "Steam" / "compatibilitytools.d",
-            home / ".steam" / "root" / "compatibilitytools.d",
-            home / ".steam" / "steam" / "compatibilitytools.d"
-        ]
-        for cdir in compat_dirs:
-            if cdir.exists():
-                for item in cdir.iterdir():
+        # 1. Proton version check
+        curr_ver = data.get("proton_version", "").strip()
+        if not curr_ver:
+            candidates = []
+            compat_dirs = [
+                home / ".local" / "share" / "Steam" / "compatibilitytools.d",
+                home / ".steam" / "root" / "compatibilitytools.d",
+                home / ".steam" / "steam" / "compatibilitytools.d"
+            ]
+            for cdir in compat_dirs:
+                if cdir.exists():
+                    for item in cdir.iterdir():
+                        if item.is_dir() and (item / "proton").exists():
+                            candidates.append(item.name)
+
+            for sdir in find_steam_common_dirs():
+                for item in sdir.glob("Proton*"):
                     if item.is_dir() and (item / "proton").exists():
                         candidates.append(item.name)
 
-        # Look in Steam common
-        for sdir in find_steam_common_dirs():
-            for item in sdir.glob("Proton*"):
-                if item.is_dir() and (item / "proton").exists():
-                    candidates.append(item.name)
+            if candidates:
+                candidates.sort(key=lambda x: ("GE-Proton" in x, "Experimental" in x, x), reverse=True)
+                data["proton_version"] = candidates[0]
+                changed = True
 
-        if candidates:
-            # Sort by newest / GE-Proton first
-            candidates.sort(key=lambda x: ("GE-Proton" in x, "Experimental" in x, x), reverse=True)
-            chosen = candidates[0]
-            data["proton_version"] = chosen
+        # 2. NVIDIA + Wayland check: Gamescope SDL backend causes black screen flickering on NVIDIA
+        is_wayland = os.environ.get("XDG_SESSION_TYPE") == "wayland" or bool(os.environ.get("WAYLAND_DISPLAY"))
+        is_nvidia = Path("/proc/driver/nvidia").exists() or Path("/dev/nvidia0").exists()
+        if is_wayland and is_nvidia:
+            if data.get("gamescope_sdl_backend", True) is not False:
+                data["gamescope_sdl_backend"] = False
+                changed = True
+
+        if changed:
             settings_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
     except Exception as e:
-        print(f"Error auto-configuring PartyDeck Proton: {e}")
+        print(f"Error auto-configuring PartyDeck settings: {e}")
 
 
 def parse_lenient_handler(content: str, filename: str = "", meta: dict = None) -> dict:

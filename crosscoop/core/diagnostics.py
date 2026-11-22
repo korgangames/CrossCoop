@@ -166,7 +166,8 @@ class PreFlightAuditor:
 
         # Test running bwrap in unprivileged mode
         try:
-            res = subprocess.run([bwrap_path, "--ro-bind", "/usr", "/usr", "--proc", "/proc", "--dev", "/dev", "true"],
+            true_bin = shutil.which("true") or "/usr/bin/true"
+            res = subprocess.run([bwrap_path, "--ro-bind", "/usr", "/usr", "--symlink", "usr/lib64", "/lib64", "--symlink", "usr/bin", "/bin", "--proc", "/proc", "--dev", "/dev", true_bin],
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=2)
             if res.returncode == 0:
                 return DiagnosticResult(
@@ -209,6 +210,25 @@ class PreFlightAuditor:
 
         details.append(f"Gamescope: {gamescope_path}")
         details.append(f"Tiling model: {player_count}-player split composition")
+
+        # Check NVIDIA + Wayland + PartyDeck gamescope_sdl_backend
+        is_wayland = os.environ.get("XDG_SESSION_TYPE") == "wayland" or bool(os.environ.get("WAYLAND_DISPLAY"))
+        is_nvidia = Path("/proc/driver/nvidia").exists() or Path("/dev/nvidia0").exists()
+        if is_wayland and is_nvidia:
+            settings_file = Path.home() / ".local" / "share" / "partydeck" / "settings.json"
+            if settings_file.exists():
+                try:
+                    import json
+                    pd_cfg = json.loads(settings_file.read_text(encoding="utf-8"))
+                    if pd_cfg.get("gamescope_sdl_backend") is False:
+                        details.append("GPU Backend: Native Gamescope Wayland backend verified (eliminates NVIDIA SDL flickering).")
+                    else:
+                        status = "WARN"
+                        details.append("GPU Backend: PartyDeck was using SDL backend on NVIDIA Wayland, which causes screen flickering. Auto-remedied to native backend.")
+                        from crosscoop.core.converter import auto_configure_partydeck_proton
+                        auto_configure_partydeck_proton()
+                except Exception:
+                    pass
 
         return DiagnosticResult(
             "DISPLAY_CHECK", "Display Compositor & Window Tiling", status,

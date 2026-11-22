@@ -34,10 +34,10 @@ class NucleusSection(QWidget):
             }
         """)
 
-        self.hub_tab = HubTab(self.hub_client, self.partydeck_mgr)
+        self.hub_tab = HubTab(self.hub_client, self.partydeck_mgr, self.nucleus_mgr)
         self.installed_tab = NucleusInstalledTab(self.nucleus_mgr, self.partydeck_mgr)
 
-        self.sub_tabs.addTab(self.hub_tab, "🌐 SplitScreen.Me Hub (895 Games)")
+        self.sub_tabs.addTab(self.hub_tab, "🌐 SplitScreen.Me Hub (896 Games)")
         self.sub_tabs.addTab(self.installed_tab, "💾 Local Installed Handlers")
 
         layout.addWidget(self.sub_tabs)

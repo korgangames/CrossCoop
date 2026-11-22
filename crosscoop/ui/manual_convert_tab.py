@@ -1,7 +1,7 @@
 """
 Manual File & Code Converter Tab.
 Bidirectional conversion for local files or pasted code snippets,
-with support for unofficial community handlers and lenient parsing.
+with two-way 1-click install directly to PartyDeck or Nucleus Co-op.
 """
 
 import os
@@ -13,17 +13,22 @@ from PyQt6.QtWidgets import (
     QFileDialog, QPlainTextEdit, QSplitter, QGroupBox,
     QComboBox, QMessageBox
 )
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, pyqtSignal
 
+from crosscoop.core.nucleus_manager import NucleusManager
 from crosscoop.core.converter import (
     parse_nucleus_js, parse_lenient_handler, partydeck_to_nucleus_js,
     export_partydeck_package, export_nucleus_package, import_handler_file
 )
 
 class ManualConvertTab(QWidget):
-    def __init__(self, partydeck_mgr, parent=None):
+    nucleus_installed_signal = pyqtSignal()
+    partydeck_installed_signal = pyqtSignal()
+
+    def __init__(self, partydeck_mgr, nucleus_mgr=None, parent=None):
         super().__init__(parent)
         self.partydeck_mgr = partydeck_mgr
+        self.nucleus_mgr = nucleus_mgr if nucleus_mgr else NucleusManager()
         self.setup_ui()
 
     def setup_ui(self):
@@ -75,16 +80,23 @@ class ManualConvertTab(QWidget):
         self.output_edit.setStyleSheet("font-family: monospace; background-color: #12131a; border: 1px solid #232533; border-radius: 6px;")
         out_layout.addWidget(self.output_edit)
 
-        # Bottom export buttons
+        # Bottom export & direct install buttons (both ways)
         btn_bar = QHBoxLayout()
         self.save_btn = QPushButton("💾 Save Result to File...")
         self.save_btn.clicked.connect(self.on_save_file)
         btn_bar.addWidget(self.save_btn)
 
-        self.install_partydeck_btn = QPushButton("🚀 Install directly to PartyDeck")
-        self.install_partydeck_btn.setObjectName("successBtn")
-        self.install_partydeck_btn.clicked.connect(self.on_install_partydeck)
-        btn_bar.addWidget(self.install_partydeck_btn)
+        btn_bar.addStretch()
+
+        self.install_nc_btn = QPushButton("🪟 Install to Nucleus Co-op")
+        self.install_nc_btn.setStyleSheet("background-color: #2563eb; color: #ffffff; font-weight: 600; padding: 8px 14px; border-radius: 6px;")
+        self.install_nc_btn.clicked.connect(self.on_install_nucleus)
+        btn_bar.addWidget(self.install_nc_btn)
+
+        self.install_pd_btn = QPushButton("🐧 Install to PartyDeck")
+        self.install_pd_btn.setStyleSheet("background-color: #9333ea; color: #ffffff; font-weight: 600; padding: 8px 14px; border-radius: 6px;")
+        self.install_pd_btn.clicked.connect(self.on_install_partydeck)
+        btn_bar.addWidget(self.install_pd_btn)
 
         out_layout.addLayout(btn_bar)
         splitter.addWidget(output_group)
@@ -96,10 +108,8 @@ class ManualConvertTab(QWidget):
         idx = self.mode_combo.currentIndex()
         if idx == 0:
             self.input_edit.setPlaceholderText("// Paste Nucleus handler.js code...")
-            self.install_partydeck_btn.show()
         else:
             self.input_edit.setPlaceholderText('// Paste PartyDeck handler.json code...')
-            self.install_partydeck_btn.hide()
 
     def on_open_file(self):
         idx = self.mode_combo.currentIndex()
@@ -182,12 +192,45 @@ class ManualConvertTab(QWidget):
                 QMessageBox.information(self, "Saved", f"Saved successfully to:\n{out_file}")
 
     def on_install_partydeck(self):
-        text = self.output_edit.toPlainText().strip()
-        if not text:
-            return
+        idx = self.mode_combo.currentIndex()
         try:
-            pd_data = json.loads(text)
+            if idx == 0:
+                text = self.output_edit.toPlainText().strip()
+                if not text:
+                    self.do_convert()
+                    text = self.output_edit.toPlainText().strip()
+                pd_data = json.loads(text)
+            else:
+                text = self.input_edit.toPlainText().strip()
+                pd_data = json.loads(text)
+
             self.partydeck_mgr.save_handler(pd_data["name"], pd_data)
             QMessageBox.information(self, "Installed", f"Handler '{pd_data['name']}' has been installed to PartyDeck!")
+            self.partydeck_installed_signal.emit()
         except Exception as e:
-            QMessageBox.critical(self, "Install Error", f"Could not install handler:\n{e}")
+            QMessageBox.critical(self, "Install Error", f"Could not install handler to PartyDeck:\n{e}")
+
+    def on_install_nucleus(self):
+        idx = self.mode_combo.currentIndex()
+        try:
+            if idx == 0:
+                # In mode 0: Input edit contains Nucleus JS code
+                js_code = self.input_edit.toPlainText().strip()
+                if not js_code:
+                    return
+                parsed = parse_lenient_handler(js_code)
+                name = parsed.get("name", "CustomGame")
+            else:
+                # In mode 1: Output edit contains generated Nucleus JS code
+                js_code = self.output_edit.toPlainText().strip()
+                if not js_code:
+                    self.do_convert()
+                    js_code = self.output_edit.toPlainText().strip()
+                in_json = json.loads(self.input_edit.toPlainText())
+                name = in_json.get("name", "CustomGame")
+
+            dest = self.nucleus_mgr.save_handler_js(name, js_code)
+            QMessageBox.information(self, "Installed to Nucleus", f"Installed handler '{name}' to Nucleus Co-op directory:\n{dest}")
+            self.nucleus_installed_signal.emit()
+        except Exception as e:
+            QMessageBox.critical(self, "Install Error", f"Could not install handler to Nucleus:\n{e}")

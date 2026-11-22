@@ -1,11 +1,15 @@
 """
 PartyDeck Installed Handlers Tab.
-Manages games currently installed in PartyDeck and allows reverse conversion to Nucleus Co-op,
+Manages games currently installed in PartyDeck and allows two-way actions:
+- 1-Click install directly into Nucleus Co-op handlers directory
+- Reverse export to Nucleus Co-op package/script (.js / .zip)
+- Edit JSON parameters, open folder, or delete
 with clickable header sorting.
 """
 
 import os
 import subprocess
+from pathlib import Path
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QHeaderView, QSplitter,
@@ -14,14 +18,17 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor
 
+from crosscoop.core.nucleus_manager import NucleusManager
 from crosscoop.core.converter import partydeck_to_nucleus_js, export_nucleus_package
 
 class InstalledTab(QWidget):
     handler_changed_signal = pyqtSignal()
+    handler_converted_to_nucleus_signal = pyqtSignal()
 
-    def __init__(self, partydeck_mgr, parent=None):
+    def __init__(self, partydeck_mgr, nucleus_mgr=None, parent=None):
         super().__init__(parent)
         self.partydeck_mgr = partydeck_mgr
+        self.nucleus_mgr = nucleus_mgr if nucleus_mgr else NucleusManager()
         self.installed_handlers = []
         self.selected_item = None
 
@@ -71,7 +78,7 @@ class InstalledTab(QWidget):
         splitter.addWidget(self.table)
 
         # Right Inspector Panel
-        inspector = QGroupBox("PartyDeck Handler Details & Reverse Export")
+        inspector = QGroupBox("PartyDeck Handler Details & Two-Way Nucleus Bridge")
         insp_layout = QVBoxLayout(inspector)
 
         self.details_lbl = QLabel("Select an installed handler")
@@ -85,12 +92,19 @@ class InstalledTab(QWidget):
         # Action Buttons
         btn_layout = QVBoxLayout()
 
-        self.export_nucleus_btn = QPushButton("🔄 Export to Nucleus Co-op Handler (.js / .zip)")
-        self.export_nucleus_btn.setObjectName("primaryBtn")
-        self.export_nucleus_btn.setFixedHeight(36)
+        # Two-way install & export row
+        nucleus_actions = QHBoxLayout()
+        self.install_nucleus_btn = QPushButton("🪟 Install directly to Nucleus Co-op")
+        self.install_nucleus_btn.setStyleSheet("background-color: #2563eb; color: #ffffff; font-weight: 600; padding: 8px 12px; border-radius: 6px;")
+        self.install_nucleus_btn.setEnabled(False)
+        self.install_nucleus_btn.clicked.connect(self.on_install_to_nucleus)
+        nucleus_actions.addWidget(self.install_nucleus_btn)
+
+        self.export_nucleus_btn = QPushButton("💾 Export to File (.js / .zip)")
         self.export_nucleus_btn.setEnabled(False)
         self.export_nucleus_btn.clicked.connect(self.on_export_to_nucleus)
-        btn_layout.addWidget(self.export_nucleus_btn)
+        nucleus_actions.addWidget(self.export_nucleus_btn)
+        btn_layout.addLayout(nucleus_actions)
 
         row_btns = QHBoxLayout()
         self.save_edits_btn = QPushButton("💾 Save JSON Changes")
@@ -113,7 +127,7 @@ class InstalledTab(QWidget):
         insp_layout.addLayout(btn_layout)
 
         splitter.addWidget(inspector)
-        splitter.setSizes([550, 430])
+        splitter.setSizes([550, 450])
         main_layout.addWidget(splitter, stretch=1)
 
     def on_header_clicked(self, logical_index):
@@ -174,6 +188,7 @@ class InstalledTab(QWidget):
         else:
             self.details_lbl.setText("No handlers found in PartyDeck")
             self.json_editor.clear()
+            self.install_nucleus_btn.setEnabled(False)
             self.export_nucleus_btn.setEnabled(False)
             self.save_edits_btn.setEnabled(False)
             self.open_folder_btn.setEnabled(False)
@@ -195,6 +210,7 @@ class InstalledTab(QWidget):
         import json
         self.json_editor.setText(json.dumps(d, indent=2))
 
+        self.install_nucleus_btn.setEnabled(True)
         self.export_nucleus_btn.setEnabled(True)
         self.save_edits_btn.setEnabled(True)
         self.open_folder_btn.setEnabled(True)
@@ -232,6 +248,20 @@ class InstalledTab(QWidget):
             self.partydeck_mgr.delete_handler(self.selected_item["folder_name"])
             self.refresh_list()
             self.handler_changed_signal.emit()
+
+    def on_install_to_nucleus(self):
+        """1-Click direct install to Nucleus Co-op handler directory."""
+        if not self.selected_item:
+            return
+        d = self.selected_item["data"]
+        name = d.get("name", self.selected_item["folder_name"])
+        js_code = partydeck_to_nucleus_js(d)
+        dest_path = self.nucleus_mgr.save_handler_js(name, js_code)
+        QMessageBox.information(
+            self, "Installed to Nucleus",
+            f"Successfully converted and installed '{name}' directly into Nucleus Co-op!\nSaved to:\n{dest_path}"
+        )
+        self.handler_converted_to_nucleus_signal.emit()
 
     def on_export_to_nucleus(self):
         if not self.selected_item:

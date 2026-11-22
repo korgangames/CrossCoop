@@ -7,9 +7,10 @@ from crosscoop.ui.partydeck_browser_tab import PartyDeckBrowserTab
 from crosscoop.ui.installed_tab import InstalledTab
 
 class PartyDeckSection(QWidget):
-    def __init__(self, partydeck_mgr, parent=None):
+    def __init__(self, partydeck_mgr, nucleus_mgr=None, parent=None):
         super().__init__(parent)
         self.partydeck_mgr = partydeck_mgr
+        self.nucleus_mgr = nucleus_mgr
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -32,8 +33,8 @@ class PartyDeckSection(QWidget):
             }
         """)
 
-        self.pd_browser_tab = PartyDeckBrowserTab(self.partydeck_mgr)
-        self.installed_tab = InstalledTab(self.partydeck_mgr)
+        self.pd_browser_tab = PartyDeckBrowserTab(self.partydeck_mgr, self.nucleus_mgr)
+        self.installed_tab = InstalledTab(self.partydeck_mgr, self.nucleus_mgr)
 
         self.sub_tabs.addTab(self.pd_browser_tab, "🌐 PartyDeck Community Browser")
         self.sub_tabs.addTab(self.installed_tab, "💾 Local Installed in PartyDeck")

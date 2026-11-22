@@ -3,6 +3,7 @@ Nucleus Co-op local installation and handler directory manager.
 """
 
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -32,6 +33,18 @@ class NucleusManager:
                         "size": item.stat().st_size
                     })
         return handlers
+
+    def is_installed(self, game_name: str) -> bool:
+        """Check if a handler matching game_name exists in nucleus_coop/handlers."""
+        if not self.handlers_dir.exists():
+            return False
+        clean = re.sub(r'[^a-zA-Z0-9]', '', game_name).lower()
+        for item in self.handlers_dir.iterdir():
+            if item.is_file() and item.suffix.lower() in [".js", ".zip", ".nc"]:
+                item_clean = re.sub(r'[^a-zA-Z0-9]', '', item.stem).lower()
+                if clean in item_clean or item_clean in clean:
+                    return True
+        return False
 
     def read_handler_code(self, file_path: str) -> str:
         """Read .js content from file or archive."""
@@ -66,6 +79,22 @@ class NucleusManager:
             print(f"Error saving {file_path}: {e}")
             return False
 
+    def save_handler_js(self, handler_name: str, js_content: str) -> str:
+        """Save a Nucleus handler script (.js) into nucleus_coop/handlers/."""
+        clean_name = re.sub(r'[\/:*?"<>|]', '', handler_name).strip()
+        filename = f"{clean_name}.js"
+        target_path = self.handlers_dir / filename
+        target_path.write_text(js_content, encoding="utf-8")
+        return str(target_path)
+
+    def save_handler_package(self, package_name: str, pkg_bytes: bytes) -> str:
+        """Save a downloaded Nucleus package (.zip / .nc) into nucleus_coop/handlers/."""
+        clean_name = re.sub(r'[\/:*?"<>|]', '', package_name).strip()
+        filename = f"{clean_name}.zip"
+        target_path = self.handlers_dir / filename
+        target_path.write_bytes(pkg_bytes)
+        return str(target_path)
+
     def delete_handler(self, file_path: str) -> bool:
         """Delete a local handler file."""
         p = Path(file_path)
@@ -80,7 +109,6 @@ class NucleusManager:
         if not src.exists():
             raise FileNotFoundError(f"Source file not found: {src_file_path}")
         dest = self.handlers_dir / src.name
-        # If destination already exists with same name, make it unique
         if dest.exists() and dest != src:
             stem = src.stem
             suffix = src.suffix

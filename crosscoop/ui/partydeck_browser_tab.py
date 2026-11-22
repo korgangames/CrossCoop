@@ -1,20 +1,26 @@
 """
 PartyDeck Community Handlers Browser Tab.
 Allows users to browse PartyDeck community handlers just like the Nucleus Co-op Hub,
-with 1-click install into PartyDeck or export to Nucleus Co-op format,
+with two-way 1-click install:
+- Install to PartyDeck (Linux / SteamOS)
+- Convert & install to Nucleus Co-op (Windows / Wine)
+- Export to either format (.js, .zip, .json, .pd2)
 plus clickable header filtering (Title, Category, Author, Status).
 """
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QComboBox,
     QLabel, QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QSplitter, QGroupBox, QTextBrowser, QMessageBox, QProgressBar
+    QSplitter, QGroupBox, QTextBrowser, QMessageBox, QProgressBar, QFileDialog
 )
 from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QColor
+from pathlib import Path
+import json
 
+from crosscoop.core.nucleus_manager import NucleusManager
 from crosscoop.core.partydeck_community import PartyDeckCommunityClient
-from crosscoop.core.converter import partydeck_to_nucleus_js, export_nucleus_package
+from crosscoop.core.converter import partydeck_to_nucleus_js, export_nucleus_package, export_partydeck_package
 
 class LiveFetchWorker(QThread):
     finished_signal = pyqtSignal(list)
@@ -30,10 +36,12 @@ class LiveFetchWorker(QThread):
 
 class PartyDeckBrowserTab(QWidget):
     handler_installed_signal = pyqtSignal()
+    nucleus_handler_installed_signal = pyqtSignal()
 
-    def __init__(self, partydeck_mgr, parent=None):
+    def __init__(self, partydeck_mgr, nucleus_mgr=None, parent=None):
         super().__init__(parent)
         self.partydeck_mgr = partydeck_mgr
+        self.nucleus_mgr = nucleus_mgr if nucleus_mgr else NucleusManager()
         self.community_client = PartyDeckCommunityClient()
         self.filtered_handlers = []
         self.selected_handler = None
@@ -66,23 +74,16 @@ class PartyDeckBrowserTab(QWidget):
         self.cat_combo.currentTextChanged.connect(self.refresh_table)
         filter_bar.addWidget(self.cat_combo, stretch=1)
 
-        self.fetch_btn = QPushButton("🔄 Sync Latest from GitHub")
-        self.fetch_btn.setToolTip("Fetch newly posted [Handler Release] issues from partydeck/partydeck")
+        self.fetch_btn = QPushButton("🔄 Sync GitHub Issues")
+        self.fetch_btn.setToolTip("Query partydeck/partydeck GitHub issues for live community submissions")
         self.fetch_btn.clicked.connect(self.on_sync_github)
         filter_bar.addWidget(self.fetch_btn)
 
         main_layout.addLayout(filter_bar)
 
-        self.prog_bar = QProgressBar()
-        self.prog_bar.setRange(0, 0)
-        self.prog_bar.setFixedHeight(14)
-        self.prog_bar.hide()
-        main_layout.addWidget(self.prog_bar)
-
-        # Splitter: Table Left, Details Right
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # Games Table
+        # Table of Handlers
         self.table = QTableWidget()
         self.table.setColumnCount(4)
         self.table.setHorizontalHeaderLabels(["Game Title ⬍", "Category ⬍", "Author ⬍", "Status ⬍"])
@@ -104,7 +105,7 @@ class PartyDeckBrowserTab(QWidget):
         splitter.addWidget(self.table)
 
         # Right Inspector Panel
-        inspector = QGroupBox("PartyDeck Handler Details & Actions")
+        inspector = QGroupBox("Two-Way Handler Inspector")
         insp_layout = QVBoxLayout(inspector)
 
         self.title_lbl = QLabel("Select a handler to view details")
@@ -121,28 +122,58 @@ class PartyDeckBrowserTab(QWidget):
         self.desc_browser.setStyleSheet("background-color: #12131a; border: 1px solid #232533; border-radius: 6px;")
         insp_layout.addWidget(self.desc_browser, stretch=1)
 
-        # Buttons
-        btn_layout = QVBoxLayout()
-        self.install_btn = QPushButton("⚡ Install to PartyDeck")
-        self.install_btn.setObjectName("primaryBtn")
-        self.install_btn.setFixedHeight(36)
-        self.install_btn.setEnabled(False)
-        self.install_btn.clicked.connect(self.on_install_clicked)
-        btn_layout.addWidget(self.install_btn)
+        # Progress bar
+        self.prog_bar = QProgressBar()
+        self.prog_bar.setRange(0, 0)
+        self.prog_bar.setFixedHeight(16)
+        self.prog_bar.hide()
+        insp_layout.addWidget(self.prog_bar)
 
-        self.export_nucleus_btn = QPushButton("🔄 Convert to Nucleus Co-op Handler (.js)")
-        self.export_nucleus_btn.setEnabled(False)
-        self.export_nucleus_btn.clicked.connect(self.on_export_nucleus_clicked)
-        btn_layout.addWidget(self.export_nucleus_btn)
+        self.status_lbl = QLabel("")
+        self.status_lbl.setStyleSheet("font-weight: 600;")
+        insp_layout.addWidget(self.status_lbl)
+
+        # Action Buttons Layout (Both Ways)
+        btn_layout = QVBoxLayout()
+
+        # Primary Download Row: PartyDeck and Nucleus Co-op
+        primary_row = QHBoxLayout()
+        self.install_pd_btn = QPushButton("🐧 Install to PartyDeck")
+        self.install_pd_btn.setObjectName("primaryBtn")
+        self.install_pd_btn.setStyleSheet("background-color: #9333ea; color: #ffffff; font-weight: 600; padding: 9px 12px; border-radius: 6px;")
+        self.install_pd_btn.setFixedHeight(38)
+        self.install_pd_btn.setEnabled(False)
+        self.install_pd_btn.clicked.connect(self.on_install_partydeck_clicked)
+        primary_row.addWidget(self.install_pd_btn)
+
+        self.install_nc_btn = QPushButton("🪟 Convert & Install to Nucleus")
+        self.install_nc_btn.setStyleSheet("background-color: #2563eb; color: #ffffff; font-weight: 600; padding: 9px 12px; border-radius: 6px;")
+        self.install_nc_btn.setFixedHeight(38)
+        self.install_nc_btn.setEnabled(False)
+        self.install_nc_btn.clicked.connect(self.on_install_nucleus_clicked)
+        primary_row.addWidget(self.install_nc_btn)
+        btn_layout.addLayout(primary_row)
+
+        # Secondary Export Row
+        secondary_row = QHBoxLayout()
+        self.export_pd_btn = QPushButton("📦 Export PartyDeck (.json)")
+        self.export_pd_btn.setEnabled(False)
+        self.export_pd_btn.clicked.connect(self.on_export_partydeck_clicked)
+        secondary_row.addWidget(self.export_pd_btn)
+
+        self.export_nc_btn = QPushButton("💾 Export Nucleus (.js)")
+        self.export_nc_btn.setEnabled(False)
+        self.export_nc_btn.clicked.connect(self.on_export_nucleus_clicked)
+        secondary_row.addWidget(self.export_nc_btn)
+        btn_layout.addLayout(secondary_row)
 
         insp_layout.addLayout(btn_layout)
 
         splitter.addWidget(inspector)
-        splitter.setSizes([580, 400])
+        splitter.setSizes([580, 420])
         main_layout.addWidget(splitter, stretch=1)
 
     def on_header_clicked(self, logical_index):
-        """Toggle sorting between ascending and descending on header click."""
         if logical_index == self.sort_column:
             self.sort_order = (
                 Qt.SortOrder.AscendingOrder
@@ -151,10 +182,7 @@ class PartyDeckBrowserTab(QWidget):
             )
         else:
             self.sort_column = logical_index
-            if logical_index == 3: # Status
-                self.sort_order = Qt.SortOrder.DescendingOrder
-            else:
-                self.sort_order = Qt.SortOrder.AscendingOrder
+            self.sort_order = Qt.SortOrder.AscendingOrder
 
         self.table.horizontalHeader().setSortIndicator(self.sort_column, self.sort_order)
         self.apply_sorting_and_render()
@@ -170,7 +198,13 @@ class PartyDeckBrowserTab(QWidget):
             elif self.sort_column == 2:
                 return h.get("author", "").lower()
             elif self.sort_column == 3:
-                return 1 if self.partydeck_mgr.is_installed(h.get("name", "")) else 0
+                name = h.get("name", "")
+                is_nc = self.nucleus_mgr.is_installed(name)
+                is_pd = self.partydeck_mgr.is_installed(name)
+                if is_nc and is_pd: return 3
+                if is_nc: return 2
+                if is_pd: return 1
+                return 0
             return ""
 
         self.filtered_handlers.sort(key=get_sort_key, reverse=is_reverse)
@@ -179,9 +213,6 @@ class PartyDeckBrowserTab(QWidget):
     def refresh_table(self):
         q = self.search_input.text()
         cat = self.cat_combo.currentText()
-        if cat == "All Categories":
-            cat = "All"
-
         self.filtered_handlers = self.community_client.search(query=q, category=cat)
         self.apply_sorting_and_render()
 
@@ -190,22 +221,32 @@ class PartyDeckBrowserTab(QWidget):
 
         for row, h in enumerate(self.filtered_handlers):
             name = h.get("name", "Unknown")
-            category = h.get("category", "General")
+            cat = h.get("category", "General")
             author = h.get("author", "Community")
-            is_inst = self.partydeck_mgr.is_installed(name)
-            status_text = "✅ Installed" if is_inst else "Available"
 
-            item_name = QTableWidgetItem(name)
-            item_cat = QTableWidgetItem(category)
+            is_nc = self.nucleus_mgr.is_installed(name)
+            is_pd = self.partydeck_mgr.is_installed(name)
+
+            if is_nc and is_pd:
+                status_text = "✅ Both Ready"
+                status_color = "#34d399"
+            elif is_nc:
+                status_text = "🪟 In Nucleus"
+                status_color = "#60a5fa"
+            elif is_pd:
+                status_text = "🐧 In PartyDeck"
+                status_color = "#c084fc"
+            else:
+                status_text = "Available"
+                status_color = "#9ca3af"
+
+            item_title = QTableWidgetItem(name)
+            item_cat = QTableWidgetItem(cat)
             item_author = QTableWidgetItem(author)
             item_status = QTableWidgetItem(status_text)
-            
-            if is_inst:
-                item_status.setForeground(QColor("#34d399"))
-            else:
-                item_status.setForeground(QColor("#9ca3af"))
+            item_status.setForeground(QColor(status_color))
 
-            self.table.setItem(row, 0, item_name)
+            self.table.setItem(row, 0, item_title)
             self.table.setItem(row, 1, item_cat)
             self.table.setItem(row, 2, item_author)
             self.table.setItem(row, 3, item_status)
@@ -217,13 +258,15 @@ class PartyDeckBrowserTab(QWidget):
         selected_rows = self.table.selectionModel().selectedRows()
         if not selected_rows:
             self.selected_handler = None
-            self.install_btn.setEnabled(False)
-            self.export_nucleus_btn.setEnabled(False)
+            self.install_pd_btn.setEnabled(False)
+            self.install_nc_btn.setEnabled(False)
+            self.export_pd_btn.setEnabled(False)
+            self.export_nc_btn.setEnabled(False)
             return
 
         row = selected_rows[0].row()
-        self.selected_handler = self.filtered_handlers[row]
-        h = self.selected_handler
+        h = self.filtered_handlers[row]
+        self.selected_handler = h
 
         name = h.get("name", "Unknown")
         author = h.get("author", "Community")
@@ -252,16 +295,29 @@ class PartyDeckBrowserTab(QWidget):
         """
         self.desc_browser.setHtml(html)
 
-        self.install_btn.setEnabled(True)
-        self.export_nucleus_btn.setEnabled(True)
+        self.install_pd_btn.setEnabled(True)
+        self.install_nc_btn.setEnabled(True)
+        self.export_pd_btn.setEnabled(True)
+        self.export_nc_btn.setEnabled(True)
 
-        is_inst = self.partydeck_mgr.is_installed(name)
-        if is_inst:
-            self.install_btn.setText("🔄 Update / Re-install Handler")
+        is_nc = self.nucleus_mgr.is_installed(name)
+        is_pd = self.partydeck_mgr.is_installed(name)
+
+        if is_nc and is_pd:
+            self.status_lbl.setText("Status: Ready in both Nucleus Co-op and PartyDeck")
+            self.status_lbl.setStyleSheet("color: #34d399;")
+        elif is_nc:
+            self.status_lbl.setText("Status: Installed in Nucleus Co-op handlers")
+            self.status_lbl.setStyleSheet("color: #60a5fa;")
+        elif is_pd:
+            self.status_lbl.setText("Status: Installed in PartyDeck handlers")
+            self.status_lbl.setStyleSheet("color: #c084fc;")
         else:
-            self.install_btn.setText("⚡ Install to PartyDeck")
+            self.status_lbl.setText("Status: Ready for 1-click download to either platform")
+            self.status_lbl.setStyleSheet("color: #9ca3af;")
 
-    def on_install_clicked(self):
+    def on_install_partydeck_clicked(self):
+        """Install handler directly to PartyDeck."""
         if not self.selected_handler:
             return
         h = self.selected_handler
@@ -291,20 +347,69 @@ class PartyDeckBrowserTab(QWidget):
         self.refresh_table()
         self.handler_installed_signal.emit()
 
-    def on_export_nucleus_clicked(self):
+    def on_install_nucleus_clicked(self):
+        """Convert PartyDeck handler and install directly to Nucleus Co-op."""
         if not self.selected_handler:
             return
         h = self.selected_handler
-        from PyQt6.QtWidgets import QFileDialog
-        
+        clean_name = h.get("name", "Game").strip()
+        js_code = partydeck_to_nucleus_js(h)
+        dest_path = self.nucleus_mgr.save_handler_js(clean_name, js_code)
+        QMessageBox.information(
+            self, "Installed to Nucleus",
+            f"Successfully converted and installed '{clean_name}' to Nucleus Co-op handlers!\nSaved to:\n{dest_path}"
+        )
+        self.refresh_table()
+        self.nucleus_handler_installed_signal.emit()
+
+    def on_export_nucleus_clicked(self):
+        """Export handler directly to .js for Nucleus Co-op."""
+        if not self.selected_handler:
+            return
+        h = self.selected_handler
         js_code = partydeck_to_nucleus_js(h)
         file_path, _ = QFileDialog.getSaveFileName(
             self, "Save Nucleus Handler", f"{h['name']}.js", "JavaScript (*.js)"
         )
         if file_path:
-            with open(file_path, "w", encoding="utf-8") as f:
-                f.write(js_code)
+            Path(file_path).write_text(js_code, encoding="utf-8")
             QMessageBox.information(self, "Export Complete", f"Generated Nucleus Co-op handler for '{h['name']}'!\nSaved to:\n{file_path}")
+
+    def on_export_partydeck_clicked(self):
+        """Export PartyDeck JSON or package."""
+        if not self.selected_handler:
+            return
+        h = self.selected_handler
+        clean_name = h.get("name", "Game").strip()
+        pd_data = {
+            "name": clean_name,
+            "author": h.get("author", "Community"),
+            "version": "1.0",
+            "info": h.get("description", ""),
+            "spec_ver": 3,
+            "path_gameroot": "",
+            "runtime": h.get("runtime", "umu"),
+            "exec": h.get("exec", "Game.exe"),
+            "args": h.get("args", ""),
+            "env": h.get("env", ""),
+            "sdl2_override": "No",
+            "pause_between_starts": 5.0,
+            "use_mangohud": False,
+            "use_goldberg": h.get("use_goldberg", True),
+            "ps_xinput": True,
+            "steam_appid": h.get("steam_appid"),
+            "game_null_paths": [],
+            "overrides": {}
+        }
+        file_path, _ = QFileDialog.getSaveFileName(
+            self, "Save PartyDeck Handler", f"{clean_name}.json", "JSON (*.json);;PartyDeck Package (*.pd2)"
+        )
+        if file_path:
+            if file_path.endswith(".pd2"):
+                export_partydeck_package(pd_data, file_path)
+            else:
+                Path(file_path).write_text(json.dumps(pd_data, indent=2), encoding="utf-8")
+            QMessageBox.information(self, "Export Complete", f"Saved PartyDeck handler for '{clean_name}'!\nSaved to:\n{file_path}")
 
     def on_sync_github(self):
         self.prog_bar.show()

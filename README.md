@@ -1,5 +1,5 @@
 # 🎮 CrossCoop — Universal Split-Screen Bridge
-**Bridging the PC Split-Screen Libraries of [Nucleus Co-op (Windows)](https://github.com/SplitScreen-Me/splitscreenme-nucleus) and [PartyDeck (Linux/SteamOS)](https://github.com/partydeck/partydeck)**
+**True Two-Way Split-Screen Ecosystem: [Nucleus Co-op (Windows)](https://github.com/SplitScreen-Me/splitscreenme-nucleus) ⟷ [PartyDeck (Linux/SteamOS)](https://github.com/partydeck/partydeck)**
 
 [![GitHub Release](https://img.shields.io/github/v/release/korgangames/CrossCoop?style=for-the-badge&color=6366f1)](https://github.com/korgangames/CrossCoop/releases)
 [![Nobara Linux](https://img.shields.io/badge/Optimized%20for-Nobara%20%2F%20SteamOS-emerald?style=for-the-badge)](https://nobaraproject.org)
@@ -16,7 +16,7 @@ PC gaming has two community-driven tools for playing non-split-screen games loca
 
 Historically, they have been locked in their own separate worlds:
 * **The Reality:** Native PartyDeck repositories document only about **10 verified handlers**, while Nucleus Co-op cannot run on Linux because its Win32 API DLL injections and window hooks fail under Wine/Proton.
-* **The Solution:** **CrossCoop** provides **built-in in-app browsers for both platforms**, unlocking the entire **896-game SplitScreen.Me library** for Linux and Steam Deck players. CrossCoop translates complex Nucleus handlers into native PartyDeck configurations, supports importing unconfirmed community scripts, and reverse-exports PartyDeck configs back to Windows!
+* **The Solution:** **CrossCoop** provides **built-in browsers for both platforms with complete two-way downloading symmetry**. You can download & install directly to Nucleus Co-op OR convert & install directly to PartyDeck from any screen with 1 click!
 
 ---
 
@@ -29,11 +29,24 @@ Historically, they have been locked in their own separate worlds:
 
 ---
 
+## 🌟 True Two-Way Actions (Both Directions Supported)
+
+Every single screen in CrossCoop provides direct installation and export options for **both programs**:
+
+| Location | Action to Nucleus Co-op | Action to PartyDeck | Export Options |
+| :--- | :--- | :--- | :--- |
+| **SplitScreen.Me Hub (896 Games)** | **🪟 Download to Nucleus Co-op:** 1-Click download official package (.zip) & extract `.js` into `nucleus_coop/handlers/` | **🐧 Convert & Install to PartyDeck:** 1-Click translation into native PartyDeck JSON manifest in `partydeck/handlers/` | `💾 Export Nucleus (.js / .zip)`<br>`📦 Export PartyDeck (.pd2 / .json)` |
+| **PartyDeck Community Browser** | **🪟 Convert & Install to Nucleus:** 1-Click conversion of community JSON into Nucleus `handler.js` | **🐧 Install to PartyDeck:** 1-Click installation of community configs directly into PartyDeck | `💾 Export Nucleus (.js)`<br>`📦 Export PartyDeck (.json)` |
+| **PartyDeck Installed Tab** | **🪟 Install directly to Nucleus:** 1-Click push of installed games into Nucleus library | (Already installed in PartyDeck) | `💾 Export to File (.js / .zip)` |
+| **Nucleus Installed Tab** | (Already installed in Nucleus) | **🐧 Convert & Install to PartyDeck:** 1-Click conversion into PartyDeck | `📥 Import Local Handlers`<br>`💾 Save Changes` |
+| **Two-Way Converter** | **🪟 Install to Nucleus Co-op:** 1-Click direct install to Nucleus handlers | **🐧 Install to PartyDeck:** 1-Click direct install to PartyDeck handlers | `💾 Save Result to File` |
+
+---
+
 ## 🌟 Key Features
 
 ### 1. 🌐 Dual In-App Browsers (896+ Games Unlocked)
-CrossCoop doesn't just browse one ecosystem; it integrates native browsers for **both platforms**:
-* **SplitScreen.Me Hub Browser (896+ Games):** Complete live catalog of 896 verified PC games with interactive table header sorting (Title, Downloads, Players, Status), genre filtering, and 1-click install & convert to PartyDeck.
+* **SplitScreen.Me Hub Browser (896+ Games):** Complete live catalog of 896 verified PC games with interactive table header sorting (Title, Downloads, Players, Status), genre filtering, and two-way 1-click install.
 * **PartyDeck Community Browser:** Live sync with the official `partydeck/partydeck` GitHub repository to fetch verified and community-submitted issue configs.
 
 ### 2. 📥 Import Unofficial & Downloaded Handlers (Lenient Detection)
@@ -41,11 +54,7 @@ Downloaded a loose handler script or experimental package from Discord, Reddit, 
 * Click the **"📥 Import Local / Downloaded Handler"** button.
 * CrossCoop’s resilient, lenient parser auto-detects game executables, Steam AppIDs, Goldberg LAN emulators, and custom launch arguments even from unconfirmed or non-standard `.js`, `.zip`, `.nc`, `.json`, and raw text scripts.
 
-### 3. 🔄 Double-Sided Handler Translation
-* **Nucleus Co-op ➜ PartyDeck:** Translates Nucleus JavaScript handlers into clean PartyDeck JSON manifests, discarding fragile Windows DLL hooks in favor of Linux kernel controller masking.
-* **PartyDeck ➜ Nucleus Co-op:** Exports PartyDeck handlers back into standard `.js` / `.zip` / `.nc` packages ready to drop into Nucleus Co-op on Windows.
-
-### 4. 🛡️ Intensive 8-Phase Pre-Flight Stability Audit
+### 3. 🛡️ Intensive 8-Phase Pre-Flight Stability Audit
 Before launching any game, CrossCoop verifies your system to prevent crashes, input bleed, and port collisions:
 1. **Executable & Steam Library Check:** Verifies binary presence, execute permissions, and architecture.
 2. **Controller Enumeration & Masking:** Probes `/dev/input/` to ensure sufficient gamepads for the requested player count.
@@ -55,7 +64,7 @@ Before launching any game, CrossCoop verifies your system to prevent crashes, in
 6. **Network Port Collision Test:** Scans ports (Goldberg `47584`, game ports `27015`, `7777`) for orphaned background processes.
 7. **Proton / UMU Compatibility:** Verifies runner availability and prefix isolation.
 
-### 5. 🚀 Dual Launcher & Custom Bootables
+### 4. 🚀 Dual Launcher & Custom Bootables
 * Launch either **PartyDeck** or **Nucleus Co-op** with one click directly from CrossCoop’s header bar.
 * Configure custom bootable paths (AppImages, custom binaries, or runner scripts) in the **Settings** tab.
 
@@ -87,13 +96,13 @@ Download prebuilt archives and tagged releases from the [GitHub Releases Page](h
    ./crosscoop.sh
    ```
 2. **Browse or Import a Game:**
-   * Open the **🪟 Nucleus Co-op** tab to search 896+ games, or click **"📥 Import Local / Downloaded Handler"** for custom downloads.
-   * Click **"⚡ Convert & Install to PartyDeck"**.
+   * Open the **🪟 Nucleus Co-op** tab to search 896+ games, or **🐧 PartyDeck** to search community submissions.
+   * Click **"🪟 Download to Nucleus Co-op"** to install for Nucleus, or **"🐧 Convert & Install to PartyDeck"** to install for PartyDeck.
 3. **Run Pre-Flight Audit:**
    * Switch to the **🛡️ Pre-Flight Stability Audit** tab.
    * Select the game and click **"Run Intensive Stability Audit"** to ensure zero port collisions and verified controller isolation.
 4. **Play:**
-   * Click **"🚀 Run PartyDeck"** in the top bar to start gaming!
+   * Click **"🚀 Run PartyDeck"** or **"🪟 Run Nucleus Co-op"** in the top bar to start gaming!
 
 ---
 

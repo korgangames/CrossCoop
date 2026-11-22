@@ -37,6 +37,7 @@ class MainWindow(QMainWindow):
         # Core managers
         self.hub_client = HubClient()
         self.partydeck_mgr = PartyDeckManager()
+        self.partydeck_mgr.ensure_default_profiles()
         self.nucleus_mgr = NucleusManager()
 
         self.setup_ui()

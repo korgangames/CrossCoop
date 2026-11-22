@@ -67,6 +67,53 @@ class PartyDeckManager:
             return True
         return False
 
+    @property
+    def profiles_dir(self) -> Path:
+        return DEFAULT_PARTYDECK_DIR / "profiles"
+
+    def get_profiles(self) -> list[str]:
+        """Return list of persistent profile names (excluding .guests)."""
+        if not self.profiles_dir.exists():
+            return []
+        profiles = []
+        for item in self.profiles_dir.iterdir():
+            if item.is_dir() and not item.name.startswith("."):
+                profiles.append(item.name)
+        return sorted(profiles)
+
+    def create_profile(self, name: str) -> Path:
+        """Create a persistent PartyDeck profile matching its exact directory structure."""
+        clean_name = "".join(c for c in name if c.isalnum() or c in " _-").strip()
+        if not clean_name:
+            clean_name = "Player"
+
+        prof_dir = self.profiles_dir / clean_name
+        steam_settings = prof_dir / "steam" / "settings"
+
+        # Windata folders
+        for sub in ["AppData/Local/Temp", "AppData/LocalLow", "AppData/Roaming", "Documents", "Saved Games", "Desktop"]:
+            (prof_dir / "windata" / sub).mkdir(parents=True, exist_ok=True)
+
+        # Linux home folders (for native games like Terraria)
+        (prof_dir / "home" / ".local" / "share").mkdir(parents=True, exist_ok=True)
+        (prof_dir / "home" / ".config").mkdir(parents=True, exist_ok=True)
+        steam_settings.mkdir(parents=True, exist_ok=True)
+
+        # Goldberg/Steam config
+        ini_file = steam_settings / "configs.user.ini"
+        if not ini_file.exists():
+            ini_file.write_text(f"[user::general]\naccount_name={clean_name}\n", encoding="utf-8")
+
+        return prof_dir
+
+    def ensure_default_profiles(self, count: int = 4) -> list[str]:
+        """Ensure standard persistent profiles (Player1, Player2, etc.) exist."""
+        existing = self.get_profiles()
+        if not existing:
+            for i in range(1, count + 1):
+                self.create_profile(f"Player{i}")
+        return self.get_profiles()
+
     def find_partydeck_executable(self) -> str:
         """Look for partydeck executable in PATH or workspace."""
         # 1. Check workspace

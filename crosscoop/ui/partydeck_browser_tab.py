@@ -1,7 +1,8 @@
 """
 PartyDeck Community Handlers Browser Tab.
 Allows users to browse PartyDeck community handlers just like the Nucleus Co-op Hub,
-with 1-click install into PartyDeck or export to Nucleus Co-op format.
+with 1-click install into PartyDeck or export to Nucleus Co-op format,
+plus clickable header filtering (Title, Category, Author, Status).
 """
 
 from PyQt6.QtWidgets import (
@@ -37,6 +38,10 @@ class PartyDeckBrowserTab(QWidget):
         self.filtered_handlers = []
         self.selected_handler = None
         self.worker = None
+
+        # Sorting state: default column 0 (Title), Ascending
+        self.sort_column = 0
+        self.sort_order = Qt.SortOrder.AscendingOrder
 
         self.setup_ui()
         self.refresh_table()
@@ -80,11 +85,18 @@ class PartyDeckBrowserTab(QWidget):
         # Games Table
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Game Title", "Category", "Author", "Status"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setHorizontalHeaderLabels(["Game Title ⬍", "Category ⬍", "Author ⬍", "Status ⬍"])
+        
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionsClickable(True)
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(self.sort_column, self.sort_order)
+        header.sectionClicked.connect(self.on_header_clicked)
+
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setAlternatingRowColors(True)
@@ -129,6 +141,41 @@ class PartyDeckBrowserTab(QWidget):
         splitter.setSizes([580, 400])
         main_layout.addWidget(splitter, stretch=1)
 
+    def on_header_clicked(self, logical_index):
+        """Toggle sorting between ascending and descending on header click."""
+        if logical_index == self.sort_column:
+            self.sort_order = (
+                Qt.SortOrder.AscendingOrder
+                if self.sort_order == Qt.SortOrder.DescendingOrder
+                else Qt.SortOrder.DescendingOrder
+            )
+        else:
+            self.sort_column = logical_index
+            if logical_index == 3: # Status
+                self.sort_order = Qt.SortOrder.DescendingOrder
+            else:
+                self.sort_order = Qt.SortOrder.AscendingOrder
+
+        self.table.horizontalHeader().setSortIndicator(self.sort_column, self.sort_order)
+        self.apply_sorting_and_render()
+
+    def apply_sorting_and_render(self):
+        is_reverse = (self.sort_order == Qt.SortOrder.DescendingOrder)
+
+        def get_sort_key(h):
+            if self.sort_column == 0:
+                return h.get("name", "").lower()
+            elif self.sort_column == 1:
+                return h.get("category", "").lower()
+            elif self.sort_column == 2:
+                return h.get("author", "").lower()
+            elif self.sort_column == 3:
+                return 1 if self.partydeck_mgr.is_installed(h.get("name", "")) else 0
+            return ""
+
+        self.filtered_handlers.sort(key=get_sort_key, reverse=is_reverse)
+        self.render_table_rows()
+
     def refresh_table(self):
         q = self.search_input.text()
         cat = self.cat_combo.currentText()
@@ -136,6 +183,9 @@ class PartyDeckBrowserTab(QWidget):
             cat = "All"
 
         self.filtered_handlers = self.community_client.search(query=q, category=cat)
+        self.apply_sorting_and_render()
+
+    def render_table_rows(self):
         self.table.setRowCount(len(self.filtered_handlers))
 
         for row, h in enumerate(self.filtered_handlers):
@@ -266,7 +316,6 @@ class PartyDeckBrowserTab(QWidget):
     def on_sync_finished(self, updated_list):
         self.prog_bar.hide()
         self.fetch_btn.setEnabled(True)
-        # Refresh category filter
         self.cat_combo.clear()
         self.cat_combo.addItem("All Categories")
         for cat in self.community_client.get_categories():

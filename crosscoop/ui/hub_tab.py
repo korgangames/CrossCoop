@@ -1,7 +1,7 @@
 """
 Nucleus Co-op Hub Browser Tab (895 Games).
 Allows searching, previewing, and 1-click converting & installing into PartyDeck,
-with real-time live synchronization against SplitScreen.Me Hub.
+with real-time live synchronization against SplitScreen.Me Hub and interactive header sorting.
 """
 
 from PyQt6.QtWidgets import (
@@ -132,6 +132,10 @@ class HubTab(QWidget):
         self.worker = None
         self.sync_worker = None
 
+        # Sorting state: default column 3 (Downloads), Descending (Most downloaded first)
+        self.sort_column = 3
+        self.sort_order = Qt.SortOrder.DescendingOrder
+
         self.setup_ui()
         self.refresh_table()
 
@@ -173,12 +177,19 @@ class HubTab(QWidget):
         # Games Table
         self.table = QTableWidget()
         self.table.setColumnCount(5)
-        self.table.setHorizontalHeaderLabels(["Game Title", "Players", "Input", "Downloads", "Status"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setHorizontalHeaderLabels(["Game Title ⬍", "Players ⬍", "Input ⬍", "Downloads ⬍", "Status ⬍"])
+        
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionsClickable(True)
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(self.sort_column, self.sort_order)
+        header.sectionClicked.connect(self.on_header_clicked)
+
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.setAlternatingRowColors(True)
@@ -242,6 +253,51 @@ class HubTab(QWidget):
         splitter.setSizes([600, 380])
         main_layout.addWidget(splitter, stretch=1)
 
+    def on_header_clicked(self, logical_index):
+        """Toggle sorting between ascending and descending on header click."""
+        if logical_index == self.sort_column:
+            self.sort_order = (
+                Qt.SortOrder.AscendingOrder
+                if self.sort_order == Qt.SortOrder.DescendingOrder
+                else Qt.SortOrder.DescendingOrder
+            )
+        else:
+            self.sort_column = logical_index
+            # Default numeric or status columns to Descending (e.g. most downloaded / installed first)
+            if logical_index in [1, 3, 4]:
+                self.sort_order = Qt.SortOrder.DescendingOrder
+            else:
+                self.sort_order = Qt.SortOrder.AscendingOrder
+
+        self.table.horizontalHeader().setSortIndicator(self.sort_column, self.sort_order)
+        self.apply_sorting_and_render()
+
+    def apply_sorting_and_render(self):
+        """Sort the current filtered results list and populate the table."""
+        is_reverse = (self.sort_order == Qt.SortOrder.DescendingOrder)
+
+        def get_sort_key(item):
+            hid, h = item
+            if self.sort_column == 0:
+                return h.get("gameName", "").lower()
+            elif self.sort_column == 1:
+                p = h.get("maxPlayers", 0)
+                return int(p) if isinstance(p, int) else 0
+            elif self.sort_column == 2:
+                # Controller & KBM rank
+                score = (2 if h.get("playableControllers") else 0) + (1 if h.get("playableMouseKeyboard") else 0)
+                return score
+            elif self.sort_column == 3:
+                # Numeric download count
+                return int(h.get("downloadCount") or 0)
+            elif self.sort_column == 4:
+                # Status: Installed in PartyDeck first or available
+                return 1 if self.partydeck_mgr.is_installed(h.get("gameName", "")) else 0
+            return 0
+
+        self.filtered_results.sort(key=get_sort_key, reverse=is_reverse)
+        self.render_table_rows()
+
     def refresh_table(self):
         query = self.search_input.text()
         genre = self.genre_combo.currentText()
@@ -255,6 +311,9 @@ class HubTab(QWidget):
         elif p_idx == 3: min_p = 8
 
         self.filtered_results = self.hub_client.search(query=query, genre=genre, min_players=min_p)
+        self.apply_sorting_and_render()
+
+    def render_table_rows(self):
         self.table.setRowCount(len(self.filtered_results))
 
         for row, (hid, h) in enumerate(self.filtered_results):

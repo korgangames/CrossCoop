@@ -1,6 +1,7 @@
 """
 PartyDeck Installed Handlers Tab.
-Manages games currently installed in PartyDeck and allows reverse conversion to Nucleus Co-op.
+Manages games currently installed in PartyDeck and allows reverse conversion to Nucleus Co-op,
+with clickable header sorting.
 """
 
 import os
@@ -23,6 +24,9 @@ class InstalledTab(QWidget):
         self.partydeck_mgr = partydeck_mgr
         self.installed_handlers = []
         self.selected_item = None
+
+        self.sort_column = 0
+        self.sort_order = Qt.SortOrder.AscendingOrder
 
         self.setup_ui()
         self.refresh_list()
@@ -49,11 +53,18 @@ class InstalledTab(QWidget):
         # Table of installed handlers
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Game Name", "Executable", "Steam AppID", "LAN Emu"])
-        self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
-        self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
-        self.table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        self.table.setHorizontalHeaderLabels(["Game Name ⬍", "Executable ⬍", "Steam AppID ⬍", "LAN Emu ⬍"])
+        
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionsClickable(True)
+        header.setSortIndicatorShown(True)
+        header.setSortIndicator(self.sort_column, self.sort_order)
+        header.sectionClicked.connect(self.on_header_clicked)
+
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.SingleSelection)
         self.table.itemSelectionChanged.connect(self.on_selection_changed)
@@ -105,9 +116,45 @@ class InstalledTab(QWidget):
         splitter.setSizes([550, 430])
         main_layout.addWidget(splitter, stretch=1)
 
+    def on_header_clicked(self, logical_index):
+        if logical_index == self.sort_column:
+            self.sort_order = (
+                Qt.SortOrder.AscendingOrder
+                if self.sort_order == Qt.SortOrder.DescendingOrder
+                else Qt.SortOrder.DescendingOrder
+            )
+        else:
+            self.sort_column = logical_index
+            self.sort_order = Qt.SortOrder.AscendingOrder
+
+        self.table.horizontalHeader().setSortIndicator(self.sort_column, self.sort_order)
+        self.apply_sorting_and_render()
+
+    def apply_sorting_and_render(self):
+        is_reverse = (self.sort_order == Qt.SortOrder.DescendingOrder)
+
+        def get_sort_key(item):
+            d = item["data"]
+            if self.sort_column == 0:
+                return d.get("name", item["folder_name"]).lower()
+            elif self.sort_column == 1:
+                return d.get("exec", "").lower()
+            elif self.sort_column == 2:
+                appid = d.get("steam_appid")
+                return int(appid) if isinstance(appid, int) else 0
+            elif self.sort_column == 3:
+                return 1 if d.get("use_goldberg") else 0
+            return ""
+
+        self.installed_handlers.sort(key=get_sort_key, reverse=is_reverse)
+        self.render_rows()
+
     def refresh_list(self):
         self.installed_handlers = self.partydeck_mgr.get_installed_handlers()
         self.count_lbl.setText(f"Installed in PartyDeck ({len(self.installed_handlers)} games)")
+        self.apply_sorting_and_render()
+
+    def render_rows(self):
         self.table.setRowCount(len(self.installed_handlers))
 
         for row, item in enumerate(self.installed_handlers):
@@ -192,7 +239,6 @@ class InstalledTab(QWidget):
         d = self.selected_item["data"]
         name = d.get("name", "CustomGame")
         
-        # Generate Nucleus Co-op JavaScript
         js_code = partydeck_to_nucleus_js(d)
 
         file_path, _ = QFileDialog.getSaveFileName(

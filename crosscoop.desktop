@@ -1,0 +1,20 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=CrossCoop
+GenericName=Split-Screen Game Bridge
+Comment=Universal Split-Screen Bridge for Nucleus Co-op and PartyDeck
+Exec=/mnt/KingstonSNV3S1000G/Agents/Nucleous/crosscoop.sh
+Icon=crosscoop
+Path=/mnt/KingstonSNV3S1000G/Agents/Nucleous
+Terminal=false
+StartupNotify=true
+Categories=Game;
+Keywords=splitscreen;nucleus;partydeck;coop;multiplayer;games;
+StartupWMClass=crosscoop
+Actions=LaunchPartyDeck;
+
+[Desktop Action LaunchPartyDeck]
+Name=Launch PartyDeck Directly
+Exec=/mnt/KingstonSNV3S1000G/Agents/Nucleous/partydeck.AppImage
+Icon=crosscoop

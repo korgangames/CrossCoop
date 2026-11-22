@@ -8,7 +8,9 @@ import urllib.request
 import re
 from pathlib import Path
 
-# Built-in verified PartyDeck community handlers database
+CACHE_DIR = Path(__file__).resolve().parent.parent / "cache"
+CACHE_FILE = CACHE_DIR / "partydeck_community.json"
+
 VERIFIED_PARTYDECK_HANDLERS = [
     {
         "name": "Dark Souls III (Seamless Co-op)",
@@ -154,12 +156,31 @@ VERIFIED_PARTYDECK_HANDLERS = [
 
 class PartyDeckCommunityClient:
     def __init__(self):
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
         self.handlers = list(VERIFIED_PARTYDECK_HANDLERS)
+        self.load_cache()
+
+    def load_cache(self):
+        if CACHE_FILE.exists():
+            try:
+                cached = json.loads(CACHE_FILE.read_text(encoding="utf-8"))
+                for item in cached:
+                    if not any(h["name"].lower() == item["name"].lower() for h in self.handlers):
+                        self.handlers.append(item)
+            except Exception as e:
+                print(f"Error loading partydeck community cache: {e}")
+
+    def save_cache(self):
+        try:
+            CACHE_FILE.write_text(json.dumps(self.handlers, indent=2), encoding="utf-8")
+        except Exception as e:
+            print(f"Error saving partydeck community cache: {e}")
 
     def fetch_live_issues(self):
         """Fetch latest handler release issues from GitHub API."""
         url = "https://api.github.com/repos/partydeck/partydeck/issues?state=all&per_page=100"
         req = urllib.request.Request(url, headers={"User-Agent": "CrossCoop/1.0"})
+        new_found = 0
         try:
             with urllib.request.urlopen(req, timeout=10) as resp:
                 issues = json.loads(resp.read().decode("utf-8"))
@@ -168,10 +189,8 @@ class PartyDeckCommunityClient:
                 title = iss.get("title", "")
                 labels = [l.get("name", "").lower() for l in iss.get("labels", [])]
                 if "handler" in labels or "handler release" in title.lower() or "[handler]" in title.lower():
-                    # Parse game title
                     clean_title = re.sub(r'\[Handler Release\]|\[Game issue\]|\[Handler Request\]', '', title, flags=re.IGNORECASE).strip()
-                    # Check if already present
-                    if not any(h["name"].lower() == clean_title.lower() for h in self.handlers):
+                    if clean_title and not any(h["name"].lower() == clean_title.lower() for h in self.handlers):
                         self.handlers.append({
                             "name": clean_title,
                             "author": iss.get("user", {}).get("login", "Community"),
@@ -186,6 +205,9 @@ class PartyDeckCommunityClient:
                             "source": iss.get("html_url"),
                             "description": iss.get("body", "")[:350]
                         })
+                        new_found += 1
+            if new_found > 0:
+                self.save_cache()
         except Exception as e:
             print(f"Error fetching live issues: {e}")
         return self.handlers

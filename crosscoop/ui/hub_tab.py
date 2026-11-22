@@ -1,6 +1,7 @@
 """
 Nucleus Co-op Hub Browser Tab (895 Games).
-Allows searching, previewing, and 1-click converting & installing into PartyDeck.
+Allows searching, previewing, and 1-click converting & installing into PartyDeck,
+with real-time live synchronization against SplitScreen.Me Hub.
 """
 
 from PyQt6.QtWidgets import (
@@ -13,6 +14,19 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QColor, QFont
 
 from crosscoop.core.converter import parse_nucleus_js, export_partydeck_package
+
+class HubSyncWorker(QThread):
+    finished_signal = pyqtSignal(int, int)
+    progress_signal = pyqtSignal(str)
+
+    def __init__(self, hub_client):
+        super().__init__()
+        self.hub_client = hub_client
+
+    def run(self):
+        new_cnt, upd_cnt = self.hub_client.sync_from_live_hub(lambda msg: self.progress_signal.emit(msg))
+        self.finished_signal.emit(new_cnt, upd_cnt)
+
 
 class ConvertWorker(QThread):
     finished_signal = pyqtSignal(bool, str, dict)
@@ -42,7 +56,6 @@ class ConvertWorker(QThread):
             self.progress_signal.emit("Parsing parameters and generating PartyDeck manifest...")
             pd_data = parse_nucleus_js(js_code, self.handler_meta)
 
-            # Apply any custom overrides if user supplied them
             if self.custom_params:
                 pd_data.update(self.custom_params)
 
@@ -55,7 +68,6 @@ class ConvertWorker(QThread):
 
 
 class CustomizeDialog(QDialog):
-    """Dialog allowing user to tweak parameters before installing."""
     def __init__(self, pd_data, parent=None):
         super().__init__(parent)
         self.setWindowTitle(f"Customize Handler: {pd_data['name']}")
@@ -109,6 +121,7 @@ class CustomizeDialog(QDialog):
 
 class HubTab(QWidget):
     handler_installed_signal = pyqtSignal()
+    database_synced_signal = pyqtSignal(int)
 
     def __init__(self, hub_client, partydeck_mgr, parent=None):
         super().__init__(parent)
@@ -117,6 +130,7 @@ class HubTab(QWidget):
         self.selected_handler = None
         self.filtered_results = []
         self.worker = None
+        self.sync_worker = None
 
         self.setup_ui()
         self.refresh_table()
@@ -130,7 +144,7 @@ class HubTab(QWidget):
         filter_bar = QHBoxLayout()
         
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("🔍 Search 895 Nucleus Co-op games by title...")
+        self.search_input.setPlaceholderText(f"🔍 Search {len(self.hub_client.games)} Nucleus Co-op games by title...")
         self.search_input.textChanged.connect(self.refresh_table)
         filter_bar.addWidget(self.search_input, stretch=3)
 
@@ -145,6 +159,11 @@ class HubTab(QWidget):
         self.players_combo.addItems(["Any Players", "2+ Players", "4+ Players", "8+ Players"])
         self.players_combo.currentIndexChanged.connect(self.refresh_table)
         filter_bar.addWidget(self.players_combo, stretch=1)
+
+        self.sync_btn = QPushButton("🔄 Sync Live Hub")
+        self.sync_btn.setToolTip("Poll SplitScreen.Me Hub API to discover newly added games or handler updates")
+        self.sync_btn.clicked.connect(self.on_sync_hub)
+        filter_bar.addWidget(self.sync_btn)
 
         main_layout.addLayout(filter_bar)
 
@@ -242,15 +261,12 @@ class HubTab(QWidget):
             gname = h.get("gameName", "Unknown")
             players = str(h.get("maxPlayers", "-"))
             
-            # Input icons
             inputs = []
             if h.get("playableControllers"): inputs.append("🎮")
             if h.get("playableMouseKeyboard"): inputs.append("⌨️")
             input_str = " ".join(inputs)
 
             downloads = f"{h.get('downloadCount', 0):,}"
-            
-            # Check if already installed in PartyDeck
             is_inst = self.partydeck_mgr.is_installed(gname)
             status_text = "✅ Ready in PartyDeck" if is_inst else "Available"
 
@@ -300,7 +316,6 @@ class HubTab(QWidget):
         self.title_lbl.setText(gname)
         self.meta_lbl.setText(f"Author: {author} | ⭐ {stars} | ⬇️ {dls:,} downloads\nGenres: {genres}")
         
-        # Display formatted description
         html = f"""
         <p><b>Description / Handler Guide:</b></p>
         <p>{desc.replace(chr(10), '<br>')}</p>
@@ -324,12 +339,34 @@ class HubTab(QWidget):
             self.status_lbl.setStyleSheet("color: #9ca3af;")
             self.install_btn.setText("⚡ Convert & Install to PartyDeck")
 
+    def on_sync_hub(self):
+        self.prog_bar.setRange(0, 0)
+        self.prog_bar.show()
+        self.sync_btn.setEnabled(False)
+        self.status_lbl.setText("Polling live SplitScreen.Me Hub...")
+
+        self.sync_worker = HubSyncWorker(self.hub_client)
+        self.sync_worker.progress_signal.connect(lambda msg: self.status_lbl.setText(msg))
+        self.sync_worker.finished_signal.connect(self.on_sync_hub_finished)
+        self.sync_worker.start()
+
+    def on_sync_hub_finished(self, new_cnt, upd_cnt):
+        self.prog_bar.hide()
+        self.sync_btn.setEnabled(True)
+        total = len(self.hub_client.games)
+        self.search_input.setPlaceholderText(f"🔍 Search {total} Nucleus Co-op games by title...")
+        self.refresh_table()
+        self.database_synced_signal.emit(total)
+
+        msg = f"Hub synchronization finished!\n\n• Total Games in Library: {total}\n• New Handlers Added: {new_cnt}\n• Handlers Updated: {upd_cnt}"
+        QMessageBox.information(self, "Live Hub Synchronized", msg)
+
     def on_convert_clicked(self, custom_params=None):
         if not self.selected_handler:
             return
 
         hid, h = self.selected_handler
-        self.prog_bar.setRange(0, 0) # indeterminate spinner
+        self.prog_bar.setRange(0, 0)
         self.prog_bar.show()
         self.install_btn.setEnabled(False)
 
@@ -360,7 +397,6 @@ class HubTab(QWidget):
         if not pkg_id:
             return
 
-        # Fetch and parse preliminary data
         js = self.hub_client.extract_handler_js(pkg_id)
         pd_data = parse_nucleus_js(js, h)
 

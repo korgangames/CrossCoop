@@ -9,6 +9,8 @@ from PyQt6.QtWidgets import (
     QLabel, QTabWidget, QPushButton, QStatusBar, QMessageBox
 )
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
+from pathlib import Path
 
 from crosscoop.core.hub_client import HubClient
 from crosscoop.core.partydeck_manager import PartyDeckManager
@@ -27,6 +29,10 @@ class MainWindow(QMainWindow):
         self.resize(1200, 780)
         self.setMinimumSize(1000, 640)
         self.setStyleSheet(DARK_THEME_QSS)
+
+        icon_path = Path(__file__).resolve().parent.parent / "assets" / "icon.png"
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
 
         # Core managers
         self.hub_client = HubClient()

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="crosscoop.png" width="128" height="128" alt="CrossCoop App Icon">
+</p>
+
 # 🎮 CrossCoop — Universal Split-Screen Bridge
 **True Two-Way Split-Screen Ecosystem: [Nucleus Co-op (Windows)](https://github.com/SplitScreen-Me/splitscreenme-nucleus) ⟷ [PartyDeck (Linux/SteamOS)](https://github.com/partydeck/partydeck)**
 

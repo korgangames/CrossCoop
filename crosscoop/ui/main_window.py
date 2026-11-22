@@ -1,6 +1,7 @@
 """
 Main Window for CrossCoop Application.
-Features dual launching for both PartyDeck and Nucleus Co-op with customizable bootables.
+Features brand-grouped tabs (Nucleus Co-op and PartyDeck), dual launching,
+cross-conversion, pre-flight stability audit, and customizable bootables.
 """
 
 from PyQt6.QtWidgets import (
@@ -11,10 +12,10 @@ from PyQt6.QtCore import Qt
 
 from crosscoop.core.hub_client import HubClient
 from crosscoop.core.partydeck_manager import PartyDeckManager
-from crosscoop.ui.hub_tab import HubTab
-from crosscoop.ui.partydeck_browser_tab import PartyDeckBrowserTab
+from crosscoop.core.nucleus_manager import NucleusManager
+from crosscoop.ui.nucleus_section import NucleusSection
+from crosscoop.ui.partydeck_section import PartyDeckSection
 from crosscoop.ui.audit_tab import AuditTab
-from crosscoop.ui.installed_tab import InstalledTab
 from crosscoop.ui.manual_convert_tab import ManualConvertTab
 from crosscoop.ui.settings_tab import SettingsTab
 from crosscoop.ui.styles import DARK_THEME_QSS
@@ -30,6 +31,7 @@ class MainWindow(QMainWindow):
         # Core managers
         self.hub_client = HubClient()
         self.partydeck_mgr = PartyDeckManager()
+        self.nucleus_mgr = NucleusManager()
 
         self.setup_ui()
 
@@ -82,27 +84,58 @@ class MainWindow(QMainWindow):
         # Tab Widget
         self.tabs = QTabWidget()
         
-        self.hub_tab = HubTab(self.hub_client, self.partydeck_mgr)
-        self.pd_browser_tab = PartyDeckBrowserTab(self.partydeck_mgr)
+        # Primary Brand Sections
+        self.nucleus_section = NucleusSection(self.hub_client, self.partydeck_mgr, self.nucleus_mgr)
+        self.partydeck_section = PartyDeckSection(self.partydeck_mgr)
+        
+        # Shared Tools & Settings
         self.audit_tab = AuditTab(self.partydeck_mgr, self.hub_client)
-        self.installed_tab = InstalledTab(self.partydeck_mgr)
         self.manual_tab = ManualConvertTab(self.partydeck_mgr)
         self.settings_tab = SettingsTab(self.partydeck_mgr)
 
-        # Wire up update signals across tabs
-        self.hub_tab.handler_installed_signal.connect(self.installed_tab.refresh_list)
-        self.hub_tab.handler_installed_signal.connect(self.audit_tab.populate_handler_selector)
-        self.hub_tab.database_synced_signal.connect(lambda cnt: self.pill_db.setText(f"📦 Nucleus Hub: {cnt} Games"))
-        self.pd_browser_tab.handler_installed_signal.connect(self.installed_tab.refresh_list)
-        self.pd_browser_tab.handler_installed_signal.connect(self.audit_tab.populate_handler_selector)
-        self.installed_tab.handler_changed_signal.connect(self.hub_tab.refresh_table)
-        self.installed_tab.handler_changed_signal.connect(self.pd_browser_tab.refresh_table)
-        self.installed_tab.handler_changed_signal.connect(self.audit_tab.populate_handler_selector)
+        # Wire up update signals across sections and tabs
+        # 1. From Nucleus Hub install -> PartyDeck installed list & Audit selector
+        self.nucleus_section.hub_tab.handler_installed_signal.connect(
+            self.partydeck_section.installed_tab.refresh_list
+        )
+        self.nucleus_section.hub_tab.handler_installed_signal.connect(
+            self.audit_tab.populate_handler_selector
+        )
+        self.nucleus_section.hub_tab.database_synced_signal.connect(
+            lambda cnt: self.pill_db.setText(f"📦 Nucleus Hub: {cnt} Games")
+        )
 
-        self.tabs.addTab(self.hub_tab, "🎮 Browse Nucleus Hub (895 Games)")
-        self.tabs.addTab(self.pd_browser_tab, "🐧 Browse PartyDeck Handlers")
+        # 2. From Nucleus Local convert -> PartyDeck installed list & Audit selector
+        self.nucleus_section.installed_tab.handler_converted_signal.connect(
+            self.partydeck_section.installed_tab.refresh_list
+        )
+        self.nucleus_section.installed_tab.handler_converted_signal.connect(
+            self.audit_tab.populate_handler_selector
+        )
+
+        # 3. From PartyDeck Community install -> PartyDeck installed list & Audit selector
+        self.partydeck_section.pd_browser_tab.handler_installed_signal.connect(
+            self.partydeck_section.installed_tab.refresh_list
+        )
+        self.partydeck_section.pd_browser_tab.handler_installed_signal.connect(
+            self.audit_tab.populate_handler_selector
+        )
+
+        # 4. From PartyDeck Installed edits/deletes -> Nucleus Hub, PD Browser & Audit selector
+        self.partydeck_section.installed_tab.handler_changed_signal.connect(
+            self.nucleus_section.hub_tab.refresh_table
+        )
+        self.partydeck_section.installed_tab.handler_changed_signal.connect(
+            self.partydeck_section.pd_browser_tab.refresh_table
+        )
+        self.partydeck_section.installed_tab.handler_changed_signal.connect(
+            self.audit_tab.populate_handler_selector
+        )
+
+        # Add top-level tabs
+        self.tabs.addTab(self.nucleus_section, "🪟 Nucleus Co-op")
+        self.tabs.addTab(self.partydeck_section, "🐧 PartyDeck")
         self.tabs.addTab(self.audit_tab, "🛡️ Pre-Flight Stability Audit")
-        self.tabs.addTab(self.installed_tab, "💾 Installed in PartyDeck")
         self.tabs.addTab(self.manual_tab, "🔄 Two-Way Converter")
         self.tabs.addTab(self.settings_tab, "⚙️ Bootables & Settings")
 
@@ -111,7 +144,7 @@ class MainWindow(QMainWindow):
         # Status Bar
         self.status_bar = QStatusBar()
         self.status_bar.setStyleSheet("background-color: #12131a; color: #9ca3af; border-top: 1px solid #232533;")
-        self.status_bar.showMessage("Ready. Launch either program or customize your bootables in Settings.")
+        self.status_bar.showMessage("Ready. Select Nucleus Co-op or PartyDeck to browse and manage handlers.")
         self.setStatusBar(self.status_bar)
 
     def on_launch_partydeck(self):

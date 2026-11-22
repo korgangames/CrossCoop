@@ -7,6 +7,7 @@ crosscoop/cache/
 
 # Large binary archives (available via GitHub Releases)
 *.zip
+*.tar.gz
 *.AppImage
 *.exe
 nucleus_coop/

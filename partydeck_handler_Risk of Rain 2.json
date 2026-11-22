@@ -1,0 +1,20 @@
+{
+  "name": "Risk of Rain 2",
+  "author": "Nucleus Porter (Talos91)",
+  "version": "1.0",
+  "info": "Converted from Nucleus Co-op Handler (Hub ID: zBbF958JXyHRwdTcb). Description: Make sure you disable crossplay in your main game settings first and change some graphics settings too. Read the handler notes in the UI very carefully. \n\nThere is also [a mod](https://thunderstore.io",
+  "spec_ver": 3,
+  "path_gameroot": "",
+  "runtime": "umu",
+  "exec": "Risk of Rain 2.exe",
+  "args": "",
+  "env": "",
+  "sdl2_override": "No",
+  "pause_between_starts": 30.0,
+  "use_mangohud": false,
+  "use_goldberg": true,
+  "ps_xinput": true,
+  "steam_appid": 632360,
+  "game_null_paths": [],
+  "overrides": {}
+}

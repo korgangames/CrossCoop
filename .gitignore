@@ -1,0 +1,19 @@
+# Virtual environments & cache
+__pycache__/
+*.py[cod]
+*$py.class
+crosscoop/cache/
+.pytest_cache/
+
+# Large binary archives (available via GitHub Releases)
+*.zip
+*.AppImage
+*.exe
+nucleus_coop/
+
+# IDE & Editor artifacts
+.vscode/
+.idea/
+*.swp
+*.bak
+.system_generated/

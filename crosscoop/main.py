@@ -12,12 +12,19 @@ if BASE_DIR not in sys.path:
 
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QIcon
+from pathlib import Path
 from crosscoop.ui.main_window import MainWindow
 
 def main():
     app = QApplication(sys.argv)
     app.setApplicationName("CrossCoop")
     app.setOrganizationName("SplitScreenCommunity")
+    app.setDesktopFileName("crosscoop")
+
+    icon_path = Path(BASE_DIR) / "crosscoop" / "assets" / "icon.png"
+    if icon_path.exists():
+        app.setWindowIcon(QIcon(str(icon_path)))
 
     window = MainWindow()
     window.show()
